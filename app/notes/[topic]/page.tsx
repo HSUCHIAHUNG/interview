@@ -10,6 +10,9 @@ function renderContent(content: string) {
   const lines = content.split('\n')
   const result: React.ReactNode[] = []
   let tableLines: string[] = []
+  let inCodeBlock = false
+  let codeBlockLines: string[] = []
+  let codeBlockIdx = 0
 
   const flushTable = (key: string) => {
     if (tableLines.length < 2) return
@@ -47,6 +50,42 @@ function renderContent(content: string) {
   }
 
   lines.forEach((line, i) => {
+    // fenced code block
+    if (line.startsWith('```')) {
+      if (!inCodeBlock) {
+        if (tableLines.length > 0) flushTable(`table-${i}`)
+        inCodeBlock = true
+        codeBlockLines = []
+        codeBlockIdx = i
+      } else {
+        inCodeBlock = false
+        result.push(
+          <pre key={`code-${codeBlockIdx}`} className="bg-gray-900 text-green-300 text-sm rounded-lg px-4 py-3 overflow-x-auto my-2 font-mono whitespace-pre">
+            {codeBlockLines.join('\n')}
+          </pre>
+        )
+        codeBlockLines = []
+      }
+      return
+    }
+    if (inCodeBlock) {
+      // closing fence 緊貼在最後一行程式碼後（e.g. `}``` `）
+      if (line.endsWith('```')) {
+        const content = line.slice(0, -3).trimEnd()
+        if (content) codeBlockLines.push(content)
+        inCodeBlock = false
+        result.push(
+          <pre key={`code-${codeBlockIdx}`} className="bg-gray-900 text-green-300 text-sm rounded-lg px-4 py-3 overflow-x-auto my-2 font-mono whitespace-pre">
+            {codeBlockLines.join('\n')}
+          </pre>
+        )
+        codeBlockLines = []
+      } else {
+        codeBlockLines.push(line)
+      }
+      return
+    }
+
     if (line.startsWith('|')) {
       tableLines.push(line)
       return
@@ -64,24 +103,13 @@ function renderContent(content: string) {
       result.push(<div key={i} className="h-2" />)
     } else {
       const formatted = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      const isCode = line.includes('\n') || line.match(/^(const|let|var|\/\/|\.|\[)/)
-      if (isCode || line.includes('(') && line.includes(')') && line.includes('=>')) {
-        result.push(
-          <pre key={i} className="bg-gray-900 text-green-300 text-sm rounded-lg px-4 py-3 overflow-x-auto my-2 font-mono">
-            {line}
-          </pre>
-        )
-      } else {
-        result.push(
-          <p key={i} className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatted }} />
-        )
-      }
+      result.push(
+        <p key={i} className="text-gray-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatted }} />
+      )
     }
   })
 
-  if (tableLines.length > 0) {
-    flushTable('table-end')
-  }
+  if (tableLines.length > 0) flushTable('table-end')
 
   return result
 }
