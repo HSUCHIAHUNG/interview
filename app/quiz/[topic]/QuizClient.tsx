@@ -72,7 +72,7 @@ export default function QuizClient({
   if (phase === "result") {
     return (
       <div className="max-w-xl mx-auto text-center">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10">
+        <div className="bg-gray-900 rounded-2xl border border-gray-800 p-10">
           <div className="text-6xl mb-4">
             {score === questions.length
               ? "🏆"
@@ -80,11 +80,11 @@ export default function QuizClient({
               ? "👍"
               : "📚"}
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">測驗完成！</h2>
-          <p className="text-5xl font-bold text-blue-600 my-6">
+          <h2 className="text-2xl font-bold text-gray-100 mb-2">測驗完成！</h2>
+          <p className="text-5xl font-bold text-blue-400 my-6">
             {score} / {questions.length}
           </p>
-          <p className="text-gray-500 mb-8">
+          <p className="text-gray-400 mb-8">
             {score === questions.length
               ? "全對！你已經完全掌握這個主題。"
               : score >= questions.length / 2
@@ -102,15 +102,15 @@ export default function QuizClient({
                   key={q.id}
                   className={`p-3 rounded-lg text-sm border ${
                     correct
-                      ? "border-green-200 bg-green-50"
-                      : "border-red-200 bg-red-50"
+                      ? "border-green-800 bg-green-900/30"
+                      : "border-red-800 bg-red-900/30"
                   }`}
                 >
-                  <p className="font-medium text-gray-700">
+                  <p className={`font-medium ${correct ? "text-green-300" : "text-red-300"}`}>
                     {correct ? "✅" : "❌"} Q{i + 1}. {q.question}
                   </p>
                   {!correct && (
-                    <p className="text-red-600 mt-1">
+                    <p className="text-red-400 mt-1">
                       正確答案：{q.options[q.answer]}
                     </p>
                   )}
@@ -122,13 +122,13 @@ export default function QuizClient({
           <div className="flex gap-3 justify-center">
             <button
               onClick={restart}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-xl transition"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-2.5 rounded-xl transition"
             >
               {mode === "random" ? "換一組題目" : "重新作答"}
             </button>
             <Link
               href={"/"}
-              className="border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold px-6 py-2.5 rounded-xl transition"
+              className="border border-gray-700 hover:bg-gray-800 text-gray-300 font-semibold px-6 py-2.5 rounded-xl transition"
             >
               {mode === "random" ? "回首頁" : "選其他主題"}
             </Link>
@@ -148,7 +148,7 @@ export default function QuizClient({
             {current + 1} / {questions.length}
           </span>
         </div>
-        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-blue-500 rounded-full transition-all duration-300"
             style={{ width: `${((current + 1) / questions.length) * 100}%` }}
@@ -157,11 +157,11 @@ export default function QuizClient({
       </div>
 
       {/* Question card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-        <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-4">
+      <div className="bg-gray-900 rounded-2xl border border-gray-800 p-8">
+        <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide mb-4">
           第 {current + 1} 題
         </p>
-        <h2 className="text-lg font-semibold text-gray-800 mb-6 leading-relaxed">
+        <h2 className="text-lg font-semibold text-gray-100 mb-6 leading-relaxed whitespace-pre-wrap">
           {q.question}
         </h2>
 
@@ -171,18 +171,18 @@ export default function QuizClient({
               "w-full text-left px-4 py-3 rounded-xl border text-sm font-medium transition ";
             if (!isAnswered) {
               style +=
-                "border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-700 cursor-pointer";
+                "border-gray-700 hover:border-blue-500 hover:bg-blue-900/20 text-gray-200 cursor-pointer";
             } else if (idx === q.answer) {
-              style += "border-green-400 bg-green-50 text-green-800";
+              style += "border-green-600 bg-green-900/30 text-green-300";
             } else if (idx === selected && idx !== q.answer) {
-              style += "border-red-400 bg-red-50 text-red-800";
+              style += "border-red-600 bg-red-900/30 text-red-300";
             } else {
-              style += "border-gray-200 text-gray-400 cursor-default";
+              style += "border-gray-800 text-gray-600 cursor-default";
             }
 
             return (
               <button key={idx} className={style} onClick={() => choose(idx)}>
-                <span className="mr-2 font-bold text-gray-400">
+                <span className="mr-2 font-bold text-gray-600">
                   {String.fromCharCode(65 + idx)}.
                 </span>
                 {opt}
@@ -196,8 +196,8 @@ export default function QuizClient({
           <div
             className={`mt-6 p-4 rounded-xl text-sm leading-relaxed ${
               isCorrect
-                ? "bg-green-50 border border-green-200 text-green-800"
-                : "bg-red-50 border border-red-200 text-red-800"
+                ? "bg-green-900/30 border border-green-800 text-green-300"
+                : "bg-red-900/30 border border-red-800 text-red-300"
             }`}
           >
             <p className="font-semibold mb-1">
@@ -208,18 +208,18 @@ export default function QuizClient({
         )}
 
         {/* Nav */}
-        <div className="flex justify-between mt-8 pt-4 border-t border-gray-100">
+        <div className="flex justify-between mt-8 pt-4 border-t border-gray-800">
           <button
             onClick={goPrev}
             disabled={current === 0}
-            className="text-sm text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            className="text-sm text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
             ← 上一題
           </button>
           {isAnswered && (
             <button
               onClick={goNext}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-5 py-2 rounded-lg transition"
+              className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-5 py-2 rounded-lg transition"
             >
               {current + 1 < questions.length ? "下一題 →" : "查看結果"}
             </button>

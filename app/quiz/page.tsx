@@ -31,9 +31,9 @@ export default async function QuizPage() {
     .map((q, i) => ({ ...q, id: i + 1 }))
 
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-12">
+    <main className="min-h-screen bg-gray-950 px-6 py-12">
       <div className="max-w-xl mx-auto mb-8">
-        <Link href="/" className="text-sm text-gray-400 hover:text-gray-600 transition">
+        <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition">
           ← 回首頁
         </Link>
       </div>
