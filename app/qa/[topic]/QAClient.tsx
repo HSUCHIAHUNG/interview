@@ -31,6 +31,8 @@ export default function QAClient({ slug, meta, questions }: Props) {
   const [phase, setPhase] = useState<Phase>('answer')
   const [results, setResults] = useState<QuestionResult[]>([])
 
+  const [isError, setIsError] = useState(false)
+
   const [followUps, setFollowUps] = useState<FollowUpMessage[]>([])
   const [followUpInput, setFollowUpInput] = useState('')
   const [isFollowUpLoading, setIsFollowUpLoading] = useState(false)
@@ -44,6 +46,7 @@ export default function QAClient({ slug, meta, questions }: Props) {
   async function submitAnswer() {
     if (!userAnswer.trim()) return
     setIsLoading(true)
+    setIsError(false)
     setFeedback('')
     setPhase('feedback')
 
@@ -60,6 +63,7 @@ export default function QAClient({ slug, meta, questions }: Props) {
     if (!res.ok || !res.body) {
       const data = await res.json().catch(() => ({}))
       setFeedback(data.error ?? '評估失敗，請稍後再試。')
+      setIsError(true)
       setIsLoading(false)
       return
     }
@@ -133,6 +137,7 @@ export default function QAClient({ slug, meta, questions }: Props) {
       setCurrent(current + 1)
       setUserAnswer('')
       setFeedback('')
+      setIsError(false)
       setPhase('answer')
       setFollowUps([])
       setFollowUpInput('')
@@ -147,6 +152,7 @@ export default function QAClient({ slug, meta, questions }: Props) {
     setCurrent(0)
     setUserAnswer('')
     setFeedback('')
+    setIsError(false)
     setResults([])
     setPhase('answer')
     setFollowUps([])
@@ -232,6 +238,12 @@ export default function QAClient({ slug, meta, questions }: Props) {
           ref={textareaRef}
           value={userAnswer}
           onChange={e => setUserAnswer(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey && phase === 'answer') {
+              e.preventDefault()
+              submitAnswer()
+            }
+          }}
           disabled={phase === 'feedback'}
           placeholder="請用自己的話回答這個問題..."
           rows={5}
@@ -264,9 +276,21 @@ export default function QAClient({ slug, meta, questions }: Props) {
               </div>
             )}
             {feedback && (
-              <div className="bg-gray-800 rounded-xl p-4 text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+              <div className={`rounded-xl p-4 text-sm whitespace-pre-wrap leading-relaxed ${isError ? 'bg-red-900/30 text-red-300' : 'bg-gray-800 text-gray-300'}`}>
                 {feedback}
               </div>
+            )}
+            {isError && !isLoading && (
+              <button
+                onClick={() => {
+                  setFeedback('')
+                  setIsError(false)
+                  submitAnswer()
+                }}
+                className="mt-3 w-full border border-gray-700 hover:bg-gray-800 text-gray-300 font-semibold py-2.5 rounded-xl transition"
+              >
+                重新評估
+              </button>
             )}
 
             {/* Follow-up chat */}
