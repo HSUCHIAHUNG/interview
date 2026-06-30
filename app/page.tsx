@@ -82,12 +82,18 @@ export default async function HomePage() {
                   <span className="text-xs text-gray-400">{topic.questions.length} 道題目</span>
                 </div>
 
-                <div className="flex gap-2 mt-auto pt-2">
+                <div className="flex gap-2 mt-auto pt-2 flex-wrap">
                   <Link
                     href={`/quiz/${topic.slug}`}
                     className="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition"
                   >
-                    開始測驗
+                    選擇題
+                  </Link>
+                  <Link
+                    href={`/qa/${topic.slug}`}
+                    className="flex-1 text-center bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2 rounded-lg transition"
+                  >
+                    問答練習
                   </Link>
                   {hasNotes && (
                     <Link
