@@ -1,19 +1,18 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(request: Request) {
-  const { question, referenceAnswer, userAnswer } = await request.json()
+  const { question, referenceAnswer, userAnswer } = await request.json();
 
   if (!userAnswer?.trim()) {
-    return Response.json({ error: '請輸入答案' }, { status: 400 })
+    return Response.json({ error: "請輸入答案" }, { status: 400 });
   }
 
   try {
-    const stream = await client.messages.stream({
-      model: 'claude-haiku-4-5',
-      max_tokens: 600,
-      system: `你是一位資深前端工程師面試官，正在評估應試者的口頭回答。
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash-lite",
+      systemInstruction: `你是一位資深前端工程師面試官，正在評估應試者的口頭回答。
 請用繁體中文給出簡潔的評估回饋，格式如下（請嚴格遵守）：
 
 ✅ **答對的部分**
@@ -29,37 +28,29 @@ export async function POST(request: Request) {
 （1=完全不會，3=部分理解，5=完整清楚）
 
 評估標準：看語意是否正確，不要求用字完全一致。`,
-      messages: [
-        {
-          role: 'user',
-          content: `題目：${question}\n\n參考答案：${referenceAnswer}\n\n應試者的回答：${userAnswer}`,
-        },
-      ],
-    })
+    });
 
-    const encoder = new TextEncoder()
+    const result = await model.generateContentStream(
+      `題目：${question}\n\n參考答案：${referenceAnswer}\n\n應試者的回答：${userAnswer}`
+    );
+
+    const encoder = new TextEncoder();
     const readable = new ReadableStream({
       async start(controller) {
-        for await (const chunk of stream) {
-          if (
-            chunk.type === 'content_block_delta' &&
-            chunk.delta.type === 'text_delta'
-          ) {
-            controller.enqueue(encoder.encode(chunk.delta.text))
-          }
+        for await (const chunk of result.stream) {
+          const text = chunk.text();
+          if (text) controller.enqueue(encoder.encode(text));
         }
-        controller.close()
+        controller.close();
       },
-    })
+    });
 
     return new Response(readable, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    })
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   } catch (err: unknown) {
     const message =
-      err instanceof Error && err.message.includes('credit balance')
-        ? 'API 餘額不足，請至 console.anthropic.com 儲值後再試。'
-        : 'AI 評估暫時無法使用，請稍後再試。'
-    return Response.json({ error: message }, { status: 500 })
+      err instanceof Error ? err.message : "AI 評估暫時無法使用，請稍後再試。";
+    return Response.json({ error: message }, { status: 500 });
   }
 }

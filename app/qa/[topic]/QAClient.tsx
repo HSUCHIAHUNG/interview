@@ -12,6 +12,11 @@ interface Props {
 
 type Phase = 'answer' | 'feedback' | 'result'
 
+interface FollowUpMessage {
+  role: 'user' | 'model'
+  content: string
+}
+
 interface QuestionResult {
   question: string
   userAnswer: string
@@ -25,7 +30,14 @@ export default function QAClient({ slug, meta, questions }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const [phase, setPhase] = useState<Phase>('answer')
   const [results, setResults] = useState<QuestionResult[]>([])
+
+  const [followUps, setFollowUps] = useState<FollowUpMessage[]>([])
+  const [followUpInput, setFollowUpInput] = useState('')
+  const [isFollowUpLoading, setIsFollowUpLoading] = useState(false)
+  const [streamingResponse, setStreamingResponse] = useState('')
+
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const followUpInputRef = useRef<HTMLInputElement>(null)
 
   const q = questions[current]
 
@@ -65,6 +77,55 @@ export default function QAClient({ slug, meta, questions }: Props) {
 
     setResults(prev => [...prev, { question: q.question, userAnswer, feedback: accumulated }])
     setIsLoading(false)
+    setTimeout(() => followUpInputRef.current?.focus(), 100)
+  }
+
+  async function sendFollowUp() {
+    if (!followUpInput.trim() || isFollowUpLoading) return
+
+    const userMsg = followUpInput.trim()
+    setFollowUpInput('')
+    setIsFollowUpLoading(true)
+    setStreamingResponse('')
+
+    const historyBeforeThisMessage = followUps
+    setFollowUps(prev => [...prev, { role: 'user', content: userMsg }])
+
+    const history: FollowUpMessage[] = [
+      {
+        role: 'user',
+        content: `題目：${q.question}\n\n參考答案：${q.explanation}\n\n應試者的回答：${userAnswer}`,
+      },
+      { role: 'model', content: feedback },
+      ...historyBeforeThisMessage,
+    ]
+
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ history, message: userMsg }),
+    })
+
+    if (!res.ok || !res.body) {
+      setFollowUps(prev => [...prev, { role: 'model', content: '回應失敗，請稍後再試。' }])
+      setIsFollowUpLoading(false)
+      return
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let accumulated = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      accumulated += decoder.decode(value, { stream: true })
+      setStreamingResponse(accumulated)
+    }
+
+    setFollowUps(prev => [...prev, { role: 'model', content: accumulated }])
+    setStreamingResponse('')
+    setIsFollowUpLoading(false)
   }
 
   function goNext() {
@@ -73,6 +134,9 @@ export default function QAClient({ slug, meta, questions }: Props) {
       setUserAnswer('')
       setFeedback('')
       setPhase('answer')
+      setFollowUps([])
+      setFollowUpInput('')
+      setStreamingResponse('')
       setTimeout(() => textareaRef.current?.focus(), 100)
     } else {
       setPhase('result')
@@ -85,6 +149,9 @@ export default function QAClient({ slug, meta, questions }: Props) {
     setFeedback('')
     setResults([])
     setPhase('answer')
+    setFollowUps([])
+    setFollowUpInput('')
+    setStreamingResponse('')
     setTimeout(() => textareaRef.current?.focus(), 100)
   }
 
@@ -201,13 +268,89 @@ export default function QAClient({ slug, meta, questions }: Props) {
                 {feedback}
               </div>
             )}
+
+            {/* Follow-up chat */}
             {!isLoading && feedback && (
-              <button
-                onClick={goNext}
-                className="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition"
-              >
-                {current + 1 < questions.length ? '下一題 →' : '查看總結'}
-              </button>
+              <>
+                <div className="mt-6 border-t border-gray-800 pt-4">
+                  <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">
+                    繼續提問
+                  </p>
+
+                  {/* Message thread */}
+                  {(followUps.length > 0 || streamingResponse || isFollowUpLoading) && (
+                    <div className="space-y-3 mb-4">
+                      {followUps.map((msg, i) => (
+                        <div
+                          key={i}
+                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
+                              msg.role === 'user'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-800 text-gray-300'
+                            }`}
+                          >
+                            <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                          </div>
+                        </div>
+                      ))}
+
+                      {streamingResponse && (
+                        <div className="flex justify-start">
+                          <div className="max-w-[85%] bg-gray-800 rounded-xl px-3 py-2 text-sm text-gray-300">
+                            <p className="whitespace-pre-wrap leading-relaxed">{streamingResponse}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {isFollowUpLoading && !streamingResponse && (
+                        <div className="flex justify-start">
+                          <div className="bg-gray-800 rounded-xl px-3 py-2 text-sm text-gray-500 flex items-center gap-1">
+                            <span className="animate-pulse">●</span>
+                            <span className="animate-pulse" style={{ animationDelay: '0.2s' }}>●</span>
+                            <span className="animate-pulse" style={{ animationDelay: '0.4s' }}>●</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Input */}
+                  <div className="flex gap-2">
+                    <input
+                      ref={followUpInputRef}
+                      type="text"
+                      value={followUpInput}
+                      onChange={e => setFollowUpInput(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          sendFollowUp()
+                        }
+                      }}
+                      disabled={isFollowUpLoading}
+                      placeholder="對這個評估有疑問嗎？繼續問..."
+                      className="flex-1 border border-gray-700 bg-gray-800 rounded-xl px-4 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition disabled:opacity-50"
+                    />
+                    <button
+                      onClick={sendFollowUp}
+                      disabled={!followUpInput.trim() || isFollowUpLoading}
+                      className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white disabled:text-gray-600 font-semibold px-4 py-2.5 rounded-xl transition"
+                    >
+                      送出
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={goNext}
+                  className="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition"
+                >
+                  {current + 1 < questions.length ? '下一題 →' : '查看總結'}
+                </button>
+              </>
             )}
           </div>
         )}
