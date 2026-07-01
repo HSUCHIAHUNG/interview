@@ -1,9 +1,11 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getTopicSlugs, getTopic, hasNotesPage } from '@/lib/topics'
+import { hasNotesPage } from '@/lib/topics'
+import { getTopicFromDB, getTopicSlugsFromDB } from '@/lib/db/queries'
 
 export async function generateStaticParams() {
-  return getTopicSlugs().map((slug) => ({ topic: slug }))
+  const slugs = await getTopicSlugsFromDB()
+  return slugs.map((slug) => ({ topic: slug }))
 }
 
 function renderContent(content: string) {
@@ -120,10 +122,10 @@ export default async function NotesPage({
   params: Promise<{ topic: string }>
 }) {
   const { topic } = await params
-  const slugs = getTopicSlugs()
-  if (!slugs.includes(topic) || !hasNotesPage(topic)) notFound()
+  if (!hasNotesPage(topic)) notFound()
 
-  const data = await getTopic(topic)
+  const data = await getTopicFromDB(topic)
+  if (!data) notFound()
   const { notes } = await import(`@/topics/${topic}/notes`)
 
   return (

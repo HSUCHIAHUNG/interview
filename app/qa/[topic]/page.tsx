@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getTopicSlugs, getTopic } from '@/lib/topics'
+import { getTopicFromDB, getTopicSlugsFromDB } from '@/lib/db/queries'
 import QAClient from './QAClient'
 
 export async function generateStaticParams() {
-  return getTopicSlugs().map((slug) => ({ topic: slug }))
+  const slugs = await getTopicSlugsFromDB()
+  return slugs.map((slug) => ({ topic: slug }))
 }
 
 export default async function QAPage({
@@ -13,10 +14,8 @@ export default async function QAPage({
   params: Promise<{ topic: string }>
 }) {
   const { topic } = await params
-  const slugs = getTopicSlugs()
-  if (!slugs.includes(topic)) notFound()
-
-  const data = await getTopic(topic)
+  const data = await getTopicFromDB(topic)
+  if (!data) notFound()
 
   return (
     <main className="min-h-screen bg-gray-950 px-6 py-12">
