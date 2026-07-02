@@ -38,6 +38,7 @@ export const userProgress = pgTable('user_progress', {
   mode: text('mode').notNull(),
   currentQuestion: integer('current_question').notNull().default(0),
   quizAnswers: jsonb('quiz_answers').$type<(number | null)[]>(),
+  qaAnswers: jsonb('qa_answers').$type<(string | null)[]>(),
   completedIds: jsonb('completed_ids').$type<number[]>().default([]),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => [

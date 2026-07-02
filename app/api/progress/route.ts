@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   return Response.json({
     currentQuestion: row?.currentQuestion ?? 0,
     quizAnswers: row?.quizAnswers ?? null,
-    completedIds: row?.completedIds ?? [],
+    qaAnswers: row?.qaAnswers ?? null,
   })
 }
 
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   const { userId } = await auth()
   if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { topicSlug, mode, currentQuestion, quizAnswers, completedIds } = await request.json()
+  const { topicSlug, mode, currentQuestion, quizAnswers, qaAnswers } = await request.json()
   if (!topicSlug || !mode) return Response.json({ error: 'Missing params' }, { status: 400 })
 
   await db
@@ -46,14 +46,14 @@ export async function POST(request: Request) {
       mode,
       currentQuestion: currentQuestion ?? 0,
       quizAnswers: quizAnswers ?? null,
-      completedIds: completedIds ?? [],
+      qaAnswers: qaAnswers ?? null,
     })
     .onConflictDoUpdate({
       target: [userProgress.clerkId, userProgress.topicSlug, userProgress.mode],
       set: {
         currentQuestion: currentQuestion ?? 0,
         quizAnswers: quizAnswers ?? null,
-        completedIds: completedIds ?? [],
+        qaAnswers: qaAnswers ?? null,
         updatedAt: new Date(),
       },
     })

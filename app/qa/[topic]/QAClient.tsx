@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import type { Question, TopicMeta } from "@/lib/topics";
 
@@ -8,6 +8,8 @@ interface Props {
   slug: string;
   meta: TopicMeta;
   questions: Question[];
+  initialCurrent?: number;
+  initialAnswers?: (string | null)[] | null;
 }
 
 type Phase = "answer" | "feedback" | "result";
@@ -17,19 +19,26 @@ interface FollowUpMessage {
   content: string;
 }
 
-interface QuestionResult {
-  question: string;
-  userAnswer: string;
-  feedback: string;
-}
+export default function QAClient({
+  slug,
+  meta,
+  questions,
+  initialCurrent = 0,
+  initialAnswers = null,
+}: Props) {
+  const resolvedAnswers: (string | null)[] =
+    initialAnswers ?? Array(questions.length).fill(null);
 
-export default function QAClient({ slug, meta, questions }: Props) {
-  const [current, setCurrent] = useState(0);
-  const [userAnswer, setUserAnswer] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const currentWasAnswered = resolvedAnswers[initialCurrent] !== null;
+
+  const [current, setCurrent] = useState(initialCurrent);
+  const [qaAnswers, setQaAnswers] = useState<(string | null)[]>(resolvedAnswers);
+  const [userAnswer, setUserAnswer] = useState(resolvedAnswers[initialCurrent] ?? "");
+  const [feedback, setFeedback] = useState(
+    currentWasAnswered ? questions[initialCurrent].explanation : "",
+  );
+  const [phase, setPhase] = useState<Phase>(currentWasAnswered ? "feedback" : "answer");
   const [isLoading, setIsLoading] = useState(false);
-  const [phase, setPhase] = useState<Phase>("answer");
-  const [results, setResults] = useState<QuestionResult[]>([]);
   const [isError, setIsError] = useState(false);
 
   const [followUps, setFollowUps] = useState<FollowUpMessage[]>([]);
@@ -42,22 +51,38 @@ export default function QAClient({ slug, meta, questions }: Props) {
 
   const q = questions[current];
 
-  useEffect(() => {
-    fetch(`/api/progress?topic=${slug}&mode=qa`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data) return;
-        if (data.currentQuestion > 0) setCurrent(data.currentQuestion);
-      })
-      .catch(() => {});
-  }, [slug]);
-
-  function saveProgress(nextQuestion: number) {
+  function saveProgress(nextQuestion: number, answers: (string | null)[]) {
     fetch("/api/progress", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topicSlug: slug, mode: "qa", currentQuestion: nextQuestion }),
+      body: JSON.stringify({
+        topicSlug: slug,
+        mode: "qa",
+        currentQuestion: nextQuestion,
+        qaAnswers: answers,
+      }),
     }).catch(() => {});
+  }
+
+  function navigateTo(idx: number, answers: (string | null)[]) {
+    saveProgress(idx, answers);
+    setCurrent(idx);
+    setIsError(false);
+    setFollowUps([]);
+    setFollowUpInput("");
+    setStreamingResponse("");
+
+    const savedAnswer = answers[idx];
+    if (savedAnswer !== null) {
+      setUserAnswer(savedAnswer);
+      setFeedback(questions[idx].explanation);
+      setPhase("feedback");
+    } else {
+      setUserAnswer("");
+      setFeedback("");
+      setPhase("answer");
+      setTimeout(() => textareaRef.current?.focus(), 100);
+    }
   }
 
   async function submitAnswer() {
@@ -69,10 +94,11 @@ export default function QAClient({ slug, meta, questions }: Props) {
 
     const fixedFeedback = q.explanation;
     setFeedback(fixedFeedback);
-    setResults((prev) => [
-      ...prev,
-      { question: q.question, userAnswer, feedback: fixedFeedback },
-    ]);
+
+    const newQaAnswers = [...qaAnswers];
+    newQaAnswers[current] = userAnswer;
+    setQaAnswers(newQaAnswers);
+    saveProgress(current, newQaAnswers);
 
     fetch("/api/user-answers", {
       method: "POST",
@@ -132,6 +158,11 @@ export default function QAClient({ slug, meta, questions }: Props) {
   }
 
   function resetCurrent() {
+    const newQaAnswers = [...qaAnswers];
+    newQaAnswers[current] = null;
+    setQaAnswers(newQaAnswers);
+    saveProgress(current, newQaAnswers);
+
     setUserAnswer("");
     setFeedback("");
     setIsError(false);
@@ -139,40 +170,46 @@ export default function QAClient({ slug, meta, questions }: Props) {
     setFollowUps([]);
     setFollowUpInput("");
     setStreamingResponse("");
-    setResults((prev) => prev.slice(0, -1));
     setTimeout(() => textareaRef.current?.focus(), 100);
+  }
+
+  function goPrev() {
+    if (current === 0) return;
+    navigateTo(current - 1, qaAnswers);
   }
 
   function goNext() {
     const nextIdx = current + 1;
     if (nextIdx < questions.length) {
-      saveProgress(nextIdx);
-      setCurrent(nextIdx);
-      setUserAnswer("");
-      setFeedback("");
-      setIsError(false);
-      setPhase("answer");
-      setFollowUps([]);
-      setFollowUpInput("");
-      setTimeout(() => textareaRef.current?.focus(), 100);
+      navigateTo(nextIdx, qaAnswers);
     } else {
-      saveProgress(0);
+      saveProgress(0, qaAnswers);
       setPhase("result");
     }
   }
 
   function restart() {
-    saveProgress(0);
+    const empty = Array(questions.length).fill(null) as (string | null)[];
+    setQaAnswers(empty);
+    saveProgress(0, empty);
     setCurrent(0);
     setUserAnswer("");
     setFeedback("");
     setIsError(false);
-    setResults([]);
     setPhase("answer");
     setFollowUps([]);
     setFollowUpInput("");
     setTimeout(() => textareaRef.current?.focus(), 100);
   }
+
+  // Derive result list from qaAnswers (single source of truth)
+  const completedResults = questions
+    .map((q, i) =>
+      qaAnswers[i] !== null
+        ? { question: q.question, userAnswer: qaAnswers[i]!, feedback: q.explanation }
+        : null,
+    )
+    .filter((r): r is { question: string; userAnswer: string; feedback: string } => r !== null);
 
   if (phase === "result") {
     return (
@@ -183,7 +220,7 @@ export default function QAClient({ slug, meta, questions }: Props) {
           <p className="text-gray-500 mb-8">共 {questions.length} 題，以下是你的作答紀錄</p>
 
           <div className="text-left space-y-4 mb-8">
-            {results.map((r, i) => (
+            {completedResults.map((r, i) => (
               <details key={i} className="border border-gray-800 rounded-xl overflow-hidden">
                 <summary className="px-4 py-3 cursor-pointer font-medium text-gray-300 hover:bg-gray-800">
                   Q{i + 1}. {r.question.slice(0, 50)}{r.question.length > 50 ? "..." : ""}
@@ -265,13 +302,24 @@ export default function QAClient({ slug, meta, questions }: Props) {
         />
 
         {phase === "answer" && (
-          <button
-            onClick={submitAnswer}
-            disabled={!userAnswer.trim()}
-            className="mt-4 w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white disabled:text-gray-600 font-semibold py-3 rounded-xl transition"
-          >
-            送出，查看參考答案
-          </button>
+          <>
+            <button
+              onClick={submitAnswer}
+              disabled={!userAnswer.trim()}
+              className="mt-4 w-full bg-blue-600 hover:bg-blue-500 disabled:bg-gray-800 disabled:cursor-not-allowed text-white disabled:text-gray-600 font-semibold py-3 rounded-xl transition"
+            >
+              送出，查看參考答案
+            </button>
+            <div className="flex justify-between mt-4 pt-4 border-t border-gray-800">
+              <button
+                onClick={goPrev}
+                disabled={current === 0}
+                className="text-sm text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                ← 上一題
+              </button>
+            </div>
+          </>
         )}
 
         {phase === "feedback" && (
@@ -359,12 +407,21 @@ export default function QAClient({ slug, meta, questions }: Props) {
                     </button>
                   </div>
                 </div>
-                <button
-                  onClick={goNext}
-                  className="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition"
-                >
-                  {current + 1 < questions.length ? "下一題 →" : "查看總結"}
-                </button>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <button
+                    onClick={goPrev}
+                    disabled={current === 0}
+                    className="text-sm text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
+                  >
+                    ← 上一題
+                  </button>
+                  <button
+                    onClick={goNext}
+                    className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition"
+                  >
+                    {current + 1 < questions.length ? "下一題 →" : "查看總結"}
+                  </button>
+                </div>
               </>
             )}
           </div>

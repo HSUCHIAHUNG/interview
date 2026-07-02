@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Question, TopicMeta } from "@/lib/topics";
@@ -10,37 +10,30 @@ interface Props {
   meta: TopicMeta;
   questions: Question[];
   mode?: "topic" | "random";
+  initialCurrent?: number;
+  initialAnswers?: (number | null)[] | null;
 }
 
 type Phase = "quiz" | "result";
 
-export default function QuizClient({ slug, meta, questions, mode = "topic" }: Props) {
+export default function QuizClient({
+  slug,
+  meta,
+  questions,
+  mode = "topic",
+  initialCurrent = 0,
+  initialAnswers = null,
+}: Props) {
   const router = useRouter();
-  const [current, setCurrent] = useState(0);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<(number | null)[]>(Array(questions.length).fill(null));
+  const resolvedAnswers = initialAnswers ?? (Array(questions.length).fill(null) as (number | null)[]);
+  const [current, setCurrent] = useState(initialCurrent);
+  const [selected, setSelected] = useState<number | null>(resolvedAnswers[initialCurrent] ?? null);
+  const [answers, setAnswers] = useState<(number | null)[]>(resolvedAnswers);
   const [phase, setPhase] = useState<Phase>("quiz");
 
   const q = questions[current];
   const isAnswered = selected !== null;
   const isCorrect = selected === q.answer;
-
-  useEffect(() => {
-    if (mode !== "topic") return;
-    fetch(`/api/progress?topic=${slug}&mode=quiz`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data) return;
-        if (data.currentQuestion > 0) {
-          setCurrent(data.currentQuestion);
-          if (data.quizAnswers) {
-            setAnswers(data.quizAnswers);
-            setSelected(data.quizAnswers[data.currentQuestion] ?? null);
-          }
-        }
-      })
-      .catch(() => {});
-  }, [slug, mode]);
 
   function saveProgress(nextIdx: number, nextAnswers: (number | null)[]) {
     if (mode !== "topic") return;

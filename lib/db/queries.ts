@@ -87,6 +87,30 @@ export async function getTopicSlugsFromDB(): Promise<string[]> {
   return rows.map(r => r.slug)
 }
 
+export async function getUserProgress(
+  clerkId: string,
+  topicSlug: string,
+  mode: string,
+): Promise<{ currentQuestion: number; quizAnswers: (number | null)[] | null; qaAnswers: (string | null)[] | null }> {
+  const [row] = await db
+    .select()
+    .from(userProgress)
+    .where(
+      and(
+        eq(userProgress.clerkId, clerkId),
+        eq(userProgress.topicSlug, topicSlug),
+        eq(userProgress.mode, mode),
+      ),
+    )
+    .limit(1)
+
+  return {
+    currentQuestion: row?.currentQuestion ?? 0,
+    quizAnswers: (row?.quizAnswers as (number | null)[] | null) ?? null,
+    qaAnswers: (row?.qaAnswers as (string | null)[] | null) ?? null,
+  }
+}
+
 export async function getUserCompletedTopics(clerkId: string): Promise<Set<string>> {
   const rows = await db
     .select({ topicSlug: userTopicCompletions.topicSlug })
