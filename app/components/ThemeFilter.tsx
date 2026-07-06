@@ -15,6 +15,7 @@ interface TopicItem {
   isLoggedIn: boolean
   theme: string
   subCategory: string | null
+  practiceProgress?: { completed: number; total: number }
 }
 
 interface Props {
@@ -126,6 +127,7 @@ export default function ThemeFilter({ themes, subCategoriesByTheme, topics }: Pr
             initialCompleted={topic.initialCompleted}
             isLoggedIn={topic.isLoggedIn}
             subCategory={topic.subCategory}
+            practiceProgress={topic.practiceProgress}
           />
         ))}
       </div>

@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { UserButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
-import { getAllTopicsFromDB, getUserCompletedTopics, getSubCategoriesByTheme } from '@/lib/db/queries'
+import { getAllTopicsFromDB, getUserCompletedTopics, getSubCategoriesByTheme, getUserPracticeProgress } from '@/lib/db/queries'
 import { hasDemoPage, hasNotesPage, hasPracticePage } from '@/lib/topics'
+import { getMethodChallenge } from '@/lib/array-challenges'
 import ThemeFilter from '@/app/components/ThemeFilter'
 
 export default async function HomePage() {
@@ -13,6 +14,10 @@ export default async function HomePage() {
   const completedSlugs = userId
     ? await getUserCompletedTopics(userId)
     : new Set<string>()
+
+  const practiceProgressMap = userId
+    ? await getUserPracticeProgress(userId)
+    : new Map<string, number>()
 
   const themes = [...new Set(topics.map(t => t.theme))].sort()
 
@@ -76,6 +81,12 @@ export default async function HomePage() {
               isLoggedIn: !!userId,
               theme: topic.theme,
               subCategory: topic.subCategory,
+              practiceProgress: hasPracticePage(topic.slug)
+                ? {
+                    completed: practiceProgressMap.get(topic.slug) ?? 0,
+                    total: getMethodChallenge(topic.slug)?.problems?.length ?? 5,
+                  }
+                : undefined,
             }))}
           />
         </Suspense>

@@ -37,6 +37,7 @@ interface Props {
   initialCompleted: boolean
   isLoggedIn: boolean
   subCategory?: string | null
+  practiceProgress?: { completed: number; total: number }
 }
 
 export default function TopicCard({
@@ -49,6 +50,7 @@ export default function TopicCard({
   initialCompleted,
   isLoggedIn,
   subCategory,
+  practiceProgress,
 }: Props) {
   const [completed, setCompleted] = useState(initialCompleted)
   const [isPending, startTransition] = useTransition()
@@ -102,9 +104,14 @@ export default function TopicCard({
         {hasPractice ? (
           <Link
             href={`/practice/${slug}`}
-            className="flex-1 text-center bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2 rounded-lg transition"
+            className="flex-1 text-center bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2"
           >
             實作練習
+            {practiceProgress && (
+              <span className="text-xs opacity-75 font-normal">
+                {practiceProgress.completed}/{practiceProgress.total}
+              </span>
+            )}
           </Link>
         ) : (
           <>

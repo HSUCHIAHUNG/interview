@@ -65,6 +65,16 @@ export const userTopicCompletions = pgTable('user_topic_completions', {
   unique('user_topic_completion_uniq').on(t.clerkId, t.topicSlug),
 ])
 
+export const userProblemCompletions = pgTable('user_problem_completions', {
+  id: serial('id').primaryKey(),
+  clerkId: text('clerk_id').notNull(),
+  topicSlug: text('topic_slug').notNull(),
+  problemId: text('problem_id').notNull(),
+  completedAt: timestamp('completed_at').defaultNow().notNull(),
+}, (t) => [
+  unique('user_problem_completion_uniq').on(t.clerkId, t.topicSlug, t.problemId),
+])
+
 export type Topic = typeof topics.$inferSelect
 export type Question = typeof questions.$inferSelect
 export type UserAnswer = typeof userAnswers.$inferSelect

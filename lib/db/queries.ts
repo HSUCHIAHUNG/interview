@@ -1,6 +1,6 @@
 import { eq, sql, and, inArray } from 'drizzle-orm'
 import { db } from './index'
-import { topics, questions, userProgress, userTopicCompletions, themeSubCategories } from './schema'
+import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions } from './schema'
 import type { TopicMeta, Question } from '@/lib/topics'
 
 export type TopicCard = {
@@ -135,4 +135,34 @@ export async function getUserCompletedTopics(clerkId: string): Promise<Set<strin
     .where(eq(userTopicCompletions.clerkId, clerkId))
 
   return new Set(rows.map(r => r.topicSlug))
+}
+
+export async function getUserCompletedProblems(clerkId: string, topicSlug: string): Promise<Set<string>> {
+  const rows = await db
+    .select({ problemId: userProblemCompletions.problemId })
+    .from(userProblemCompletions)
+    .where(and(
+      eq(userProblemCompletions.clerkId, clerkId),
+      eq(userProblemCompletions.topicSlug, topicSlug),
+    ))
+  return new Set(rows.map(r => r.problemId))
+}
+
+export async function getUserPracticeProgress(clerkId: string): Promise<Map<string, number>> {
+  const rows = await db
+    .select({
+      topicSlug: userProblemCompletions.topicSlug,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(userProblemCompletions)
+    .where(eq(userProblemCompletions.clerkId, clerkId))
+    .groupBy(userProblemCompletions.topicSlug)
+  return new Map(rows.map(r => [r.topicSlug, r.count]))
+}
+
+export async function markProblemComplete(clerkId: string, topicSlug: string, problemId: string): Promise<void> {
+  await db
+    .insert(userProblemCompletions)
+    .values({ clerkId, topicSlug, problemId })
+    .onConflictDoNothing()
 }
