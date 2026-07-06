@@ -1,9 +1,9 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { UserButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
 import { getAllTopicsFromDB, getUserCompletedTopics, getSubCategoriesByTheme } from '@/lib/db/queries'
 import { hasDemoPage, hasNotesPage, hasPracticePage } from '@/lib/topics'
-import TopicCard from '@/app/components/TopicCard'
 import ThemeFilter from '@/app/components/ThemeFilter'
 
 export default async function HomePage() {
@@ -61,22 +61,24 @@ export default async function HomePage() {
         </div>
 
         {/* Theme filter + topic cards */}
-        <ThemeFilter
-          themes={themes}
-          subCategoriesByTheme={subCategoriesByTheme}
-          topics={topics.map(topic => ({
-            slug: topic.slug,
-            meta: topic.meta,
-            questionCount: topic.questionCount,
-            hasDemo: hasDemoPage(topic.slug),
-            hasNotes: hasNotesPage(topic.slug),
-            hasPractice: hasPracticePage(topic.slug),
-            initialCompleted: completedSlugs.has(topic.slug),
-            isLoggedIn: !!userId,
-            theme: topic.theme,
-            subCategory: topic.subCategory,
-          }))}
-        />
+        <Suspense fallback={null}>
+          <ThemeFilter
+            themes={themes}
+            subCategoriesByTheme={subCategoriesByTheme}
+            topics={topics.map(topic => ({
+              slug: topic.slug,
+              meta: topic.meta,
+              questionCount: topic.questionCount,
+              hasDemo: hasDemoPage(topic.slug),
+              hasNotes: hasNotesPage(topic.slug),
+              hasPractice: hasPracticePage(topic.slug),
+              initialCompleted: completedSlugs.has(topic.slug),
+              isLoggedIn: !!userId,
+              theme: topic.theme,
+              subCategory: topic.subCategory,
+            }))}
+          />
+        </Suspense>
 
         {topics.length === 0 && (
           <p className="text-center text-gray-600 mt-20">尚無題目</p>

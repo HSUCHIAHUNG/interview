@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import TopicCard from './TopicCard'
 import type { TopicMeta } from '@/lib/topics'
 
@@ -24,10 +24,20 @@ interface Props {
 }
 
 export default function ThemeFilter({ themes, subCategoriesByTheme, topics }: Props) {
-  const [activeTheme, setActiveTheme] = useState<string>(themes[0] ?? '')
-  const [activeSubCategory, setActiveSubCategory] = useState<string>('all')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  const themeParam = searchParams.get('theme')
+  const activeTheme = (themeParam && themes.includes(themeParam))
+    ? themeParam
+    : themes[0] ?? ''
 
   const subCategories = subCategoriesByTheme[activeTheme] ?? []
+
+  const subParam = searchParams.get('sub')
+  const activeSubCategory = (subParam && subCategories.includes(subParam))
+    ? subParam
+    : 'all'
 
   const filtered = topics.filter(t => {
     if (t.theme !== activeTheme) return false
@@ -36,8 +46,14 @@ export default function ThemeFilter({ themes, subCategoriesByTheme, topics }: Pr
   })
 
   function handleThemeChange(theme: string) {
-    setActiveTheme(theme)
-    setActiveSubCategory('all')
+    const params = new URLSearchParams({ theme })
+    router.push(`/?${params.toString()}`)
+  }
+
+  function handleSubChange(sub: string) {
+    const params = new URLSearchParams({ theme: activeTheme })
+    if (sub !== 'all') params.set('sub', sub)
+    router.replace(`/?${params.toString()}`)
   }
 
   return (
@@ -65,7 +81,7 @@ export default function ThemeFilter({ themes, subCategoriesByTheme, topics }: Pr
       {subCategories.length > 0 && (
         <div className="flex gap-2 mb-8 flex-wrap">
           <button
-            onClick={() => setActiveSubCategory('all')}
+            onClick={() => handleSubChange('all')}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition border ${
               activeSubCategory === 'all'
                 ? 'bg-gray-700 border-gray-600 text-gray-100'
@@ -79,7 +95,7 @@ export default function ThemeFilter({ themes, subCategoriesByTheme, topics }: Pr
             return (
               <button
                 key={sub}
-                onClick={() => setActiveSubCategory(sub)}
+                onClick={() => handleSubChange(sub)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition border ${
                   activeSubCategory === sub
                     ? 'bg-gray-700 border-gray-600 text-gray-100'
