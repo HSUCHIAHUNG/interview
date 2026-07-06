@@ -33,8 +33,10 @@ interface Props {
   questionCount: number
   hasDemo: boolean
   hasNotes: boolean
+  hasPractice: boolean
   initialCompleted: boolean
   isLoggedIn: boolean
+  subCategory?: string | null
 }
 
 export default function TopicCard({
@@ -43,8 +45,10 @@ export default function TopicCard({
   questionCount,
   hasDemo,
   hasNotes,
+  hasPractice,
   initialCompleted,
   isLoggedIn,
+  subCategory,
 }: Props) {
   const [completed, setCompleted] = useState(initialCompleted)
   const [isPending, startTransition] = useTransition()
@@ -83,6 +87,11 @@ export default function TopicCard({
         >
           {meta.category}
         </span>
+        {subCategory && (
+          <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-gray-800 text-gray-400 border border-gray-700">
+            {subCategory}
+          </span>
+        )}
         <span className="text-xs text-gray-600">{questionCount} 道題目</span>
         {completed && (
           <span className="text-xs text-green-500 font-medium">✓ 已完成</span>
@@ -90,18 +99,29 @@ export default function TopicCard({
       </div>
 
       <div className="flex gap-2 mt-auto pt-2 flex-wrap">
-        <Link
-          href={`/quiz/${slug}`}
-          className="flex-1 text-center bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-2 rounded-lg transition"
-        >
-          選擇題
-        </Link>
-        <Link
-          href={`/qa/${slug}`}
-          className="flex-1 text-center bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg transition"
-        >
-          問答練習
-        </Link>
+        {hasPractice ? (
+          <Link
+            href={`/practice/${slug}`}
+            className="flex-1 text-center bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2 rounded-lg transition"
+          >
+            實作練習
+          </Link>
+        ) : (
+          <>
+            <Link
+              href={`/quiz/${slug}`}
+              className="flex-1 text-center bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-2 rounded-lg transition"
+            >
+              選擇題
+            </Link>
+            <Link
+              href={`/qa/${slug}`}
+              className="flex-1 text-center bg-purple-700 hover:bg-purple-600 text-white text-sm font-semibold py-2 rounded-lg transition"
+            >
+              問答練習
+            </Link>
+          </>
+        )}
         {hasNotes && (
           <Link
             href={`/notes/${slug}`}
@@ -110,7 +130,7 @@ export default function TopicCard({
             查看說明
           </Link>
         )}
-        {hasDemo ? (
+        {!hasPractice && (hasDemo ? (
           <Link
             href={`/demo/${slug}`}
             className="flex-1 text-center bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-sm font-semibold py-2 rounded-lg transition"
@@ -121,7 +141,7 @@ export default function TopicCard({
           <span className="flex-1 text-center bg-gray-900 text-gray-700 border border-gray-800 text-sm font-semibold py-2 rounded-lg cursor-not-allowed">
             查看 Demo
           </span>
-        )}
+        ))}
       </div>
 
       {isLoggedIn && (

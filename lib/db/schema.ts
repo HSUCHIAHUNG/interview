@@ -5,6 +5,8 @@ export const topics = pgTable('topics', {
   slug: text('slug').unique().notNull(),
   title: text('title').notNull(),
   description: text('description').notNull(),
+  theme: text('theme').notNull().default('JavaScript'),
+  subCategory: text('sub_category'),
   category: text('category').notNull(),
   difficulty: text('difficulty').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -43,6 +45,15 @@ export const userProgress = pgTable('user_progress', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => [
   unique('user_progress_uniq').on(t.clerkId, t.topicSlug, t.mode),
+])
+
+export const themeSubCategories = pgTable('theme_sub_categories', {
+  id: serial('id').primaryKey(),
+  theme: text('theme').notNull(),
+  name: text('name').notNull(),
+  order: integer('order').notNull().default(0),
+}, (t) => [
+  unique('theme_sub_category_uniq').on(t.theme, t.name),
 ])
 
 export const userTopicCompletions = pgTable('user_topic_completions', {

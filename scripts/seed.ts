@@ -24,6 +24,8 @@ async function seed() {
         description: meta.description,
         category: meta.category,
         difficulty: meta.difficulty,
+        ...(meta.theme && { theme: meta.theme }),
+        ...(meta.subCategory && { subCategory: meta.subCategory }),
       })
       .onConflictDoUpdate({
         target: schema.topics.slug,
@@ -32,6 +34,8 @@ async function seed() {
           description: meta.description,
           category: meta.category,
           difficulty: meta.difficulty,
+          ...(meta.theme && { theme: meta.theme }),
+          ...(meta.subCategory && { subCategory: meta.subCategory }),
         },
       })
       .returning()

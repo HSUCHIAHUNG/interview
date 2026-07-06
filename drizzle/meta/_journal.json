@@ -29,6 +29,20 @@
       "when": 1782984621840,
       "tag": "0003_groovy_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783311189877,
+      "tag": "0004_redundant_boomer",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783311817826,
+      "tag": "0005_fair_white_tiger",
+      "breakpoints": true
     }
   ]
 }

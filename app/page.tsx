@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
-import { getAllTopicsFromDB, getUserCompletedTopics } from '@/lib/db/queries'
-import { hasDemoPage, hasNotesPage } from '@/lib/topics'
+import { getAllTopicsFromDB, getUserCompletedTopics, getSubCategoriesByTheme } from '@/lib/db/queries'
+import { hasDemoPage, hasNotesPage, hasPracticePage } from '@/lib/topics'
 import TopicCard from '@/app/components/TopicCard'
+import ThemeFilter from '@/app/components/ThemeFilter'
 
 export default async function HomePage() {
   const { userId } = await auth()
@@ -12,6 +13,16 @@ export default async function HomePage() {
   const completedSlugs = userId
     ? await getUserCompletedTopics(userId)
     : new Set<string>()
+
+  const themes = [...new Set(topics.map(t => t.theme))].sort()
+
+  // Fetch subcategories for each theme from DB
+  const subCategoriesByTheme: Record<string, string[]> = {}
+  await Promise.all(
+    themes.map(async theme => {
+      subCategoriesByTheme[theme] = await getSubCategoriesByTheme(theme)
+    })
+  )
 
   return (
     <main className="min-h-screen bg-gray-950 px-6 py-12">
@@ -49,21 +60,23 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        {/* Topic cards */}
-        <div className="grid gap-5 sm:grid-cols-2">
-          {topics.map((topic) => (
-            <TopicCard
-              key={topic.slug}
-              slug={topic.slug}
-              meta={topic.meta}
-              questionCount={topic.questionCount}
-              hasDemo={hasDemoPage(topic.slug)}
-              hasNotes={hasNotesPage(topic.slug)}
-              initialCompleted={completedSlugs.has(topic.slug)}
-              isLoggedIn={!!userId}
-            />
-          ))}
-        </div>
+        {/* Theme filter + topic cards */}
+        <ThemeFilter
+          themes={themes}
+          subCategoriesByTheme={subCategoriesByTheme}
+          topics={topics.map(topic => ({
+            slug: topic.slug,
+            meta: topic.meta,
+            questionCount: topic.questionCount,
+            hasDemo: hasDemoPage(topic.slug),
+            hasNotes: hasNotesPage(topic.slug),
+            hasPractice: hasPracticePage(topic.slug),
+            initialCompleted: completedSlugs.has(topic.slug),
+            isLoggedIn: !!userId,
+            theme: topic.theme,
+            subCategory: topic.subCategory,
+          }))}
+        />
 
         {topics.length === 0 && (
           <p className="text-center text-gray-600 mt-20">尚無題目</p>

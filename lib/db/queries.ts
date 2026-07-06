@@ -1,12 +1,14 @@
 import { eq, sql, and, inArray } from 'drizzle-orm'
 import { db } from './index'
-import { topics, questions, userProgress, userTopicCompletions } from './schema'
+import { topics, questions, userProgress, userTopicCompletions, themeSubCategories } from './schema'
 import type { TopicMeta, Question } from '@/lib/topics'
 
 export type TopicCard = {
   slug: string
   meta: TopicMeta
   questionCount: number
+  theme: string
+  subCategory: string | null
 }
 
 export type TopicWithQuestions = {
@@ -21,6 +23,8 @@ export async function getAllTopicsFromDB(): Promise<TopicCard[]> {
       slug: topics.slug,
       title: topics.title,
       description: topics.description,
+      theme: topics.theme,
+      subCategory: topics.subCategory,
       category: topics.category,
       difficulty: topics.difficulty,
       questionCount: sql<number>`count(${questions.id})::int`,
@@ -32,6 +36,8 @@ export async function getAllTopicsFromDB(): Promise<TopicCard[]> {
       topics.slug,
       topics.title,
       topics.description,
+      topics.theme,
+      topics.subCategory,
       topics.category,
       topics.difficulty,
     )
@@ -46,6 +52,8 @@ export async function getAllTopicsFromDB(): Promise<TopicCard[]> {
       difficulty: r.difficulty as TopicMeta['difficulty'],
     },
     questionCount: r.questionCount ?? 0,
+    theme: r.theme,
+    subCategory: r.subCategory,
   }))
 }
 
@@ -109,6 +117,15 @@ export async function getUserProgress(
     quizAnswers: (row?.quizAnswers as (number | null)[] | null) ?? null,
     qaAnswers: (row?.qaAnswers as (string | null)[] | null) ?? null,
   }
+}
+
+export async function getSubCategoriesByTheme(theme: string): Promise<string[]> {
+  const rows = await db
+    .select({ name: themeSubCategories.name })
+    .from(themeSubCategories)
+    .where(eq(themeSubCategories.theme, theme))
+    .orderBy(themeSubCategories.order)
+  return rows.map(r => r.name)
 }
 
 export async function getUserCompletedTopics(clerkId: string): Promise<Set<string>> {

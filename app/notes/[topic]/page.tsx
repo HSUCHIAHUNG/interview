@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { hasNotesPage } from "@/lib/topics";
 import { getTopicFromDB, getTopicSlugsFromDB } from "@/lib/db/queries";
+import { getMethodChallenge } from "@/lib/array-challenges";
 
 export async function generateStaticParams() {
   const slugs = await getTopicSlugsFromDB();
@@ -151,7 +152,11 @@ export default async function NotesPage({
 
   const data = await getTopicFromDB(topic);
   if (!data) notFound();
-  const { notes } = await import(`@/topics/${topic}/notes`);
+
+  const practiceEntry = getMethodChallenge(topic);
+  const notes = practiceEntry
+    ? practiceEntry.notes
+    : (await import(`@/topics/${topic}/notes`)).notes;
 
   return (
     <main className="min-h-screen bg-gray-950 px-6 py-12">
@@ -189,12 +194,21 @@ export default async function NotesPage({
         </div>
 
         <div className="mt-8 flex gap-3">
-          <Link
-            href={`/quiz/${topic}`}
-            className="flex-1 text-center bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-3 rounded-xl transition"
-          >
-            開始測驗
-          </Link>
+          {practiceEntry ? (
+            <Link
+              href={`/practice/${topic}`}
+              className="flex-1 text-center bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-3 rounded-xl transition"
+            >
+              實作練習
+            </Link>
+          ) : (
+            <Link
+              href={`/quiz/${topic}`}
+              className="flex-1 text-center bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-3 rounded-xl transition"
+            >
+              開始測驗
+            </Link>
+          )}
           <Link
             href="/"
             className="flex-1 text-center bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-200 text-sm font-semibold py-3 rounded-xl transition"

@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { hasPracticeChallenge } from './array-challenges'
 
 export function hasDemoPage(slug: string): boolean {
   return fs.existsSync(path.join(process.cwd(), 'app', 'demo', slug, 'page.tsx'))
@@ -7,6 +8,11 @@ export function hasDemoPage(slug: string): boolean {
 
 export function hasNotesPage(slug: string): boolean {
   return fs.existsSync(path.join(process.cwd(), 'topics', slug, 'notes.ts'))
+    || hasPracticeChallenge(slug)
+}
+
+export function hasPracticePage(slug: string): boolean {
+  return hasPracticeChallenge(slug)
 }
 
 export type Difficulty = 'easy' | 'medium' | 'hard'
@@ -17,6 +23,8 @@ export interface TopicMeta {
   description: string
   category: Category
   difficulty: Difficulty
+  theme?: string
+  subCategory?: string
 }
 
 export interface Question {
