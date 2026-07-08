@@ -91,7 +91,7 @@ export async function GET(
   const wavBuffer = pcmToWav(pcmBuffer)
 
   // Store in blob (fire-and-forget, non-fatal)
-  put(key, wavBuffer, { contentType: 'audio/wav' }).catch(() => {})
+  put(key, wavBuffer, { access: 'private', contentType: 'audio/wav' }).catch(() => {})
 
   return new Response(wavBuffer.buffer as ArrayBuffer, { headers: wavHeaders })
 }
