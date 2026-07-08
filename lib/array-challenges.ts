@@ -39,6 +39,7 @@ export interface MethodEntry {
   difficulty: 'easy' | 'medium' | 'hard'
   notes: MethodNotes
   problems: Problem[]
+  keyPoints?: string[]  // oral-friendly sentences for listen mode; immutable once audio is generated
 }
 
 export const arrayMethodChallenges: MethodEntry[] = [
@@ -79,6 +80,14 @@ arr.push('a', 'b')   // 回傳 7
         },
       ],
     },
+    keyPoints: [
+      'push 方法用來在陣列的最後面加入一個或多個元素，並且會直接修改原始陣列。',
+      'push 的回傳值是新的陣列長度，不是陣列本身。這是面試很常考的陷阱，一定要記住。',
+      '如果你想保持原陣列不變，應該改用展開運算子：const newArr = [...arr, newItem]，這樣原本的 arr 不會被修改。',
+      'push 可以一次傳入多個參數，例如 arr.push(1, 2, 3)，效果等同連續呼叫三次 push，但效能更好。',
+      'push 的時間複雜度是 O(1)，因為只需要在末端新增元素，比起在開頭插入的 unshift 快很多。',
+      '配合 pop 方法，push 和 pop 可以一起實作 Stack 堆疊資料結構，遵循後進先出的原則，這在面試中是很常見的考題。',
+    ],
     problems: [
       {
         id: 'basic',

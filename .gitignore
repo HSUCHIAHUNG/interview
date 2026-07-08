@@ -16,6 +16,9 @@ next-env.d.ts
 # build output
 dist/
 
+# generated TTS audio cache
+public/audio/
+
 # misc
 .DS_Store
 *.pem

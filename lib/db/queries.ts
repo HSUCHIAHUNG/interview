@@ -1,6 +1,6 @@
 import { eq, sql, and, inArray } from 'drizzle-orm'
 import { db } from './index'
-import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions } from './schema'
+import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints } from './schema'
 import type { TopicMeta, Question } from '@/lib/topics'
 
 export type TopicCard = {
@@ -165,4 +165,34 @@ export async function markProblemComplete(clerkId: string, topicSlug: string, pr
     .insert(userProblemCompletions)
     .values({ clerkId, topicSlug, problemId })
     .onConflictDoNothing()
+}
+
+export async function getKeyPointsBySlug(slug: string): Promise<{ id: number; text: string }[]> {
+  const rows = await db
+    .select({ id: methodKeyPoints.id, text: methodKeyPoints.text })
+    .from(methodKeyPoints)
+    .where(eq(methodKeyPoints.slug, slug))
+    .orderBy(methodKeyPoints.id)
+  return rows
+}
+
+export async function getKeyPointById(id: number): Promise<{ slug: string; text: string } | null> {
+  const [row] = await db
+    .select({ slug: methodKeyPoints.slug, text: methodKeyPoints.text })
+    .from(methodKeyPoints)
+    .where(eq(methodKeyPoints.id, id))
+    .limit(1)
+  return row ?? null
+}
+
+export async function createKeyPoint(slug: string, text: string): Promise<{ id: number }> {
+  const [row] = await db
+    .insert(methodKeyPoints)
+    .values({ slug, text })
+    .returning({ id: methodKeyPoints.id })
+  return row
+}
+
+export async function deleteKeyPoint(id: number): Promise<void> {
+  await db.delete(methodKeyPoints).where(eq(methodKeyPoints.id, id))
 }

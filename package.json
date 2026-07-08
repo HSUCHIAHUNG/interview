@@ -19,6 +19,7 @@
     "@google/generative-ai": "^0.24.1",
     "@neondatabase/serverless": "^1.1.0",
     "@types/nprogress": "^0.2.3",
+    "@vercel/blob": "^2.5.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.9",
     "next-nprogress-bar": "^2.4.7",

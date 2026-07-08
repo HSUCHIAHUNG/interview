@@ -173,6 +173,10 @@ export default function QAClient({
     setTimeout(() => textareaRef.current?.focus(), 100);
   }
 
+  function goFirst() {
+    navigateTo(0, qaAnswers);
+  }
+
   function goPrev() {
     if (current === 0) return;
     navigateTo(current - 1, qaAnswers);
@@ -260,6 +264,19 @@ export default function QAClient({
 
   return (
     <div className="max-w-2xl mx-auto">
+      {/* Back button */}
+      <div className="mb-8">
+        {current === 0 ? (
+          <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition">
+            ← 回首頁
+          </Link>
+        ) : (
+          <button onClick={goFirst} className="text-sm text-gray-500 hover:text-gray-300 transition">
+            ← 回第一題
+          </button>
+        )}
+      </div>
+
       {/* Progress */}
       <div className="mb-6">
         <div className="flex justify-between text-sm text-gray-500 mb-2">

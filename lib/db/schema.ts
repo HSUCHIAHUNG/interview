@@ -21,7 +21,9 @@ export const questions = pgTable('questions', {
   answer: integer('answer'),
   explanation: text('explanation').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+}, (t) => [
+  unique('questions_topic_id_order_uniq').on(t.topicId, t.order),
+])
 
 export const userAnswers = pgTable('user_answers', {
   id: serial('id').primaryKey(),
@@ -64,6 +66,13 @@ export const userTopicCompletions = pgTable('user_topic_completions', {
 }, (t) => [
   unique('user_topic_completion_uniq').on(t.clerkId, t.topicSlug),
 ])
+
+export const methodKeyPoints = pgTable('method_key_points', {
+  id: serial('id').primaryKey(),
+  slug: text('slug').notNull(),
+  text: text('text').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
 
 export const userProblemCompletions = pgTable('user_problem_completions', {
   id: serial('id').primaryKey(),

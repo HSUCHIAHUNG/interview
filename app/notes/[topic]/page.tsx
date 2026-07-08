@@ -165,7 +165,7 @@ export default async function NotesPage({
           href="/"
           className="text-sm text-gray-500 hover:text-gray-300 transition"
         >
-          ← 回首
+          ← 回首頁
         </Link>
 
         <div className="mt-6 mb-8">
