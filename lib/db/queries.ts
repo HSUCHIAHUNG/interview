@@ -227,3 +227,27 @@ export async function getDistinctThemes(): Promise<string[]> {
   const rows = await db.selectDistinct({ theme: topics.theme }).from(topics)
   return rows.map(r => r.theme)
 }
+
+export async function getQuestionsByTheme(theme: string): Promise<Question[]> {
+  const themeTopics = await db
+    .select({ id: topics.id })
+    .from(topics)
+    .where(eq(topics.theme, theme))
+
+  if (themeTopics.length === 0) return []
+
+  const topicIds = themeTopics.map(t => t.id)
+  const rows = await db
+    .select()
+    .from(questions)
+    .where(inArray(questions.topicId, topicIds))
+    .orderBy(questions.id)
+
+  return rows.map(q => ({
+    id: q.id,
+    question: q.question,
+    options: (q.options as string[]) ?? [],
+    answer: q.answer ?? 0,
+    explanation: q.explanation,
+  }))
+}

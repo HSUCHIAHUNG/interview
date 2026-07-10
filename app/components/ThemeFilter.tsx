@@ -1,6 +1,7 @@
 'use client'
 
 import { useSearchParams, useRouter } from 'next/navigation'
+import NProgress from 'nprogress'
 import TopicCard from './TopicCard'
 import type { TopicMeta } from '@/lib/topics'
 
@@ -47,11 +48,13 @@ export default function ThemeFilter({ themes, subCategoriesByTheme, topics }: Pr
   })
 
   function handleThemeChange(theme: string) {
+    NProgress.start()
     const params = new URLSearchParams({ theme })
     router.push(`/?${params.toString()}`)
   }
 
   function handleSubChange(sub: string) {
+    NProgress.start()
     const params = new URLSearchParams({ theme: activeTheme })
     if (sub !== 'all') params.set('sub', sub)
     router.replace(`/?${params.toString()}`)

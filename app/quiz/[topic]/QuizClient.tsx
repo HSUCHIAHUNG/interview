@@ -12,6 +12,7 @@ interface Props {
   mode?: "topic" | "random";
   initialCurrent?: number;
   initialAnswers?: (number | null)[] | null;
+  onBack?: () => void;
 }
 
 type Phase = "quiz" | "result";
@@ -23,6 +24,7 @@ export default function QuizClient({
   mode = "topic",
   initialCurrent = 0,
   initialAnswers = null,
+  onBack,
 }: Props) {
   const router = useRouter();
   const resolvedAnswers = initialAnswers ?? (Array(questions.length).fill(null) as (number | null)[]);
@@ -87,6 +89,7 @@ export default function QuizClient({
 
   function restart() {
     if (mode === "random") {
+      if (onBack) { onBack(); return; }
       router.refresh();
       return;
     }
@@ -143,12 +146,21 @@ export default function QuizClient({
             >
               {mode === "random" ? "換一組題目" : "重新作答"}
             </button>
-            <Link
-              href="/"
-              className="border border-gray-700 hover:bg-gray-800 text-gray-300 font-semibold px-6 py-2.5 rounded-xl transition"
-            >
-              {mode === "random" ? "回首頁" : "選其他主題"}
-            </Link>
+            {mode === "random" && onBack ? (
+              <button
+                onClick={onBack}
+                className="border border-gray-700 hover:bg-gray-800 text-gray-300 font-semibold px-6 py-2.5 rounded-xl transition"
+              >
+                回選題
+              </button>
+            ) : (
+              <Link
+                href="/"
+                className="border border-gray-700 hover:bg-gray-800 text-gray-300 font-semibold px-6 py-2.5 rounded-xl transition"
+              >
+                {mode === "random" ? "回首頁" : "選其他主題"}
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -160,9 +172,15 @@ export default function QuizClient({
       {/* Back button */}
       <div className="mb-8">
         {current === 0 ? (
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition">
-            ← 回首頁
-          </Link>
+          mode === "random" && onBack ? (
+            <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-300 transition">
+              ← 回選題
+            </button>
+          ) : (
+            <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition">
+              ← 回首頁
+            </Link>
+          )
         ) : (
           <button onClick={goFirst} className="text-sm text-gray-500 hover:text-gray-300 transition">
             ← 回第一題

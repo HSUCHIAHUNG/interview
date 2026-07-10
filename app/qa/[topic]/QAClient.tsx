@@ -10,6 +10,7 @@ interface Props {
   questions: Question[];
   initialCurrent?: number;
   initialAnswers?: (string | null)[] | null;
+  onBack?: () => void;
 }
 
 type Phase = "answer" | "feedback" | "result";
@@ -25,6 +26,7 @@ export default function QAClient({
   questions,
   initialCurrent = 0,
   initialAnswers = null,
+  onBack,
 }: Props) {
   const resolvedAnswers: (string | null)[] =
     initialAnswers ?? Array(questions.length).fill(null);
@@ -250,12 +252,21 @@ export default function QAClient({
             >
               再練一次
             </button>
-            <Link
-              href="/"
-              className="border border-gray-700 hover:bg-gray-800 text-gray-300 font-semibold px-6 py-2.5 rounded-xl transition"
-            >
-              回首頁
-            </Link>
+            {onBack ? (
+              <button
+                onClick={onBack}
+                className="border border-gray-700 hover:bg-gray-800 text-gray-300 font-semibold px-6 py-2.5 rounded-xl transition"
+              >
+                回選題
+              </button>
+            ) : (
+              <Link
+                href="/"
+                className="border border-gray-700 hover:bg-gray-800 text-gray-300 font-semibold px-6 py-2.5 rounded-xl transition"
+              >
+                回首頁
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -267,9 +278,15 @@ export default function QAClient({
       {/* Back button */}
       <div className="mb-8">
         {current === 0 ? (
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition">
-            ← 回首頁
-          </Link>
+          onBack ? (
+            <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-300 transition">
+              ← 回選題
+            </button>
+          ) : (
+            <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition">
+              ← 回首頁
+            </Link>
+          )
         ) : (
           <button onClick={goFirst} className="text-sm text-gray-500 hover:text-gray-300 transition">
             ← 回第一題
