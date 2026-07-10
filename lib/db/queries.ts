@@ -196,3 +196,34 @@ export async function createKeyPoint(slug: string, text: string): Promise<{ id: 
 export async function deleteKeyPoint(id: number): Promise<void> {
   await db.delete(methodKeyPoints).where(eq(methodKeyPoints.id, id))
 }
+
+export type ThemeTopicSection = {
+  slug: string
+  title: string
+  keyPoints: { id: number; text: string }[]
+}
+
+export async function getTopicSectionsByTheme(theme: string): Promise<ThemeTopicSection[]> {
+  const themeTopics = await db
+    .select({ slug: topics.slug, title: topics.title })
+    .from(topics)
+    .where(eq(topics.theme, theme))
+    .orderBy(topics.title)
+
+  const keyPointRows = await db
+    .select({ id: methodKeyPoints.id, text: methodKeyPoints.text, slug: methodKeyPoints.slug })
+    .from(methodKeyPoints)
+    .where(inArray(methodKeyPoints.slug, themeTopics.map(t => t.slug)))
+    .orderBy(methodKeyPoints.id)
+
+  return themeTopics.map(t => ({
+    slug: t.slug,
+    title: t.title,
+    keyPoints: keyPointRows.filter(k => k.slug === t.slug).map(k => ({ id: k.id, text: k.text })),
+  }))
+}
+
+export async function getDistinctThemes(): Promise<string[]> {
+  const rows = await db.selectDistinct({ theme: topics.theme }).from(topics)
+  return rows.map(r => r.theme)
+}
