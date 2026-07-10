@@ -93,6 +93,24 @@ export const userProblemCompletions = pgTable('user_problem_completions', {
   unique('user_problem_completion_uniq').on(t.clerkId, t.topicSlug, t.problemId),
 ])
 
+export const userWeeklyGoals = pgTable('user_weekly_goals', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  theme: text('theme').notNull(),
+  weeklyGoal: integer('weekly_goal').notNull().default(0),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (t) => [
+  unique('user_weekly_goals_uniq').on(t.userId, t.theme),
+])
+
+export const userQuestionLog = pgTable('user_question_log', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  topicSlug: text('topic_slug').notNull(),
+  mode: text('mode').notNull(),
+  loggedAt: timestamp('logged_at').defaultNow().notNull(),
+})
+
 export type Topic = typeof topics.$inferSelect
 export type Question = typeof questions.$inferSelect
 export type UserAnswer = typeof userAnswers.$inferSelect

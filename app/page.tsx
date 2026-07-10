@@ -6,6 +6,8 @@ import { getAllTopicsFromDB, getUserCompletedTopics, getSubCategoriesByTheme, ge
 import { hasDemoPage, hasPracticePage } from '@/lib/topics'
 import { getMethodChallenge } from '@/lib/array-challenges'
 import ThemeFilter from '@/app/components/ThemeFilter'
+import DailyProgress from '@/app/components/DailyProgress'
+import GoalButton from '@/app/components/GoalButton'
 
 export default async function HomePage() {
   const { userId } = await auth()
@@ -33,7 +35,8 @@ export default async function HomePage() {
     <main className="min-h-screen bg-gray-950 px-6 py-12">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex justify-end mb-6">
+        <div className="flex justify-end items-center gap-3 mb-6">
+          {userId && <GoalButton />}
           {userId ? (
             <UserButton />
           ) : (
@@ -70,6 +73,9 @@ export default async function HomePage() {
             <span>🎧</span> 彙整聆聽
           </Link>
         </div>
+
+        {/* Daily progress strip (only when logged in) */}
+        {userId && <DailyProgress />}
 
         {/* Theme filter + topic cards */}
         <Suspense fallback={null}>

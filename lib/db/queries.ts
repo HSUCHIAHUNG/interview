@@ -1,6 +1,6 @@
-import { eq, sql, and, inArray } from 'drizzle-orm'
+import { eq, sql, and, inArray, gte } from 'drizzle-orm'
 import { db } from './index'
-import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections } from './schema'
+import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections, userWeeklyGoals, userQuestionLog } from './schema'
 import type { TopicMeta, Question } from '@/lib/topics'
 
 export type TopicCard = {
@@ -312,4 +312,164 @@ export async function getQuestionsByTheme(theme: string): Promise<Question[]> {
     answer: q.answer ?? 0,
     explanation: q.explanation,
   }))
+}
+
+// ─── Weekly goals ─────────────────────────────────────────────────────────────
+
+export async function getWeeklyGoals(userId: string): Promise<{ theme: string; weeklyGoal: number }[]> {
+  const rows = await db
+    .select({ theme: userWeeklyGoals.theme, weeklyGoal: userWeeklyGoals.weeklyGoal })
+    .from(userWeeklyGoals)
+    .where(eq(userWeeklyGoals.userId, userId))
+  return rows
+}
+
+export async function setWeeklyGoal(userId: string, theme: string, weeklyGoal: number): Promise<void> {
+  await db.insert(userWeeklyGoals)
+    .values({ userId, theme, weeklyGoal, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: [userWeeklyGoals.userId, userWeeklyGoals.theme],
+      set: { weeklyGoal, updatedAt: new Date() },
+    })
+}
+
+export async function getTopicCountByTheme(): Promise<{ theme: string; count: number }[]> {
+  const rows = await db
+    .select({
+      theme: topics.theme,
+      count: sql<number>`count(${topics.id})::int`,
+    })
+    .from(topics)
+    .groupBy(topics.theme)
+  return rows.map(r => ({ theme: r.theme, count: r.count ?? 0 }))
+}
+
+// ─── Question log ─────────────────────────────────────────────────────────────
+
+export async function logQuestionAnswered(userId: string, topicSlug: string, mode: string): Promise<void> {
+  await db.insert(userQuestionLog).values({ userId, topicSlug, mode })
+}
+
+function startOfDay(): Date {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function startOfWeek(): Date {
+  const d = startOfDay()
+  const day = d.getDay()
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1)) // Monday
+  return d
+}
+
+export type ProgressSummary = {
+  todayByTheme: Record<string, number>
+  weekByTheme: Record<string, number>
+  streak: number
+}
+
+export async function getProgressSummary(userId: string): Promise<ProgressSummary> {
+  // Weekly logs joined with topics to get theme
+  const weekLogs = await db
+    .select({ theme: topics.theme, loggedAt: userQuestionLog.loggedAt })
+    .from(userQuestionLog)
+    .innerJoin(topics, eq(userQuestionLog.topicSlug, topics.slug))
+    .where(and(eq(userQuestionLog.userId, userId), gte(userQuestionLog.loggedAt, startOfWeek())))
+
+  const todayStart = startOfDay()
+  const todayByTheme: Record<string, number> = {}
+  const weekByTheme: Record<string, number> = {}
+
+  for (const log of weekLogs) {
+    weekByTheme[log.theme] = (weekByTheme[log.theme] ?? 0) + 1
+    if (log.loggedAt >= todayStart) {
+      todayByTheme[log.theme] = (todayByTheme[log.theme] ?? 0) + 1
+    }
+  }
+
+  // Streak: distinct practice days (sort in JS to avoid SELECT DISTINCT + ORDER BY constraint)
+  const dayRows = await db
+    .selectDistinct({ day: sql<string>`date_trunc('day', logged_at)::date::text` })
+    .from(userQuestionLog)
+    .where(eq(userQuestionLog.userId, userId))
+
+  const days = dayRows.map(r => r.day).sort().reverse()
+  const streak = computeStreak(days)
+
+  return { todayByTheme, weekByTheme, streak }
+}
+
+function computeStreak(days: string[]): number {
+  if (days.length === 0) return 0
+  const today = new Date().toISOString().split('T')[0]
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  if (days[0] !== today && days[0] !== yesterday) return 0
+  let streak = 1
+  for (let i = 1; i < days.length; i++) {
+    const prev = new Date(days[i - 1])
+    const curr = new Date(days[i])
+    if ((prev.getTime() - curr.getTime()) / 86400000 === 1) streak++
+    else break
+  }
+  return streak
+}
+
+export type MilestoneType =
+  | 'daily_goal'
+  | 'weekly_25' | 'weekly_50' | 'weekly_75' | 'weekly_100'
+  | 'streak_3' | 'streak_7'
+
+export async function logAndCheckMilestone(
+  userId: string,
+  topicSlug: string,
+  mode: string,
+): Promise<{ todayCount: number; weekCount: number; streak: number; milestone: MilestoneType | null }> {
+  // Log the answer
+  await logQuestionAnswered(userId, topicSlug, mode)
+
+  // Get topic theme
+  const [topicRow] = await db.select({ theme: topics.theme }).from(topics).where(eq(topics.slug, topicSlug)).limit(1)
+  if (!topicRow) return { todayCount: 0, weekCount: 0, streak: 0, milestone: null }
+  const theme = topicRow.theme
+
+  // Current counts
+  const summary = await getProgressSummary(userId)
+  const todayCount = summary.todayByTheme[theme] ?? 0
+  const weekCount = summary.weekByTheme[theme] ?? 0
+  const { streak } = summary
+
+  // Get goal
+  const [goalRow] = await db.select({ weeklyGoal: userWeeklyGoals.weeklyGoal })
+    .from(userWeeklyGoals)
+    .where(and(eq(userWeeklyGoals.userId, userId), eq(userWeeklyGoals.theme, theme)))
+    .limit(1)
+  const weeklyGoal = goalRow?.weeklyGoal ?? 0
+
+  let milestone: MilestoneType | null = null
+
+  if (weeklyGoal > 0) {
+    const dailyTarget = Math.ceil(weeklyGoal / 7)
+    const pct = (weekCount / weeklyGoal) * 100
+    const prevPct = ((weekCount - 1) / weeklyGoal) * 100
+
+    if (todayCount === dailyTarget && todayCount - 1 < dailyTarget) {
+      milestone = 'daily_goal'
+    } else if (pct >= 100 && prevPct < 100) {
+      milestone = 'weekly_100'
+    } else if (pct >= 75 && prevPct < 75) {
+      milestone = 'weekly_75'
+    } else if (pct >= 50 && prevPct < 50) {
+      milestone = 'weekly_50'
+    } else if (pct >= 25 && prevPct < 25) {
+      milestone = 'weekly_25'
+    }
+  }
+
+  if (!milestone) {
+    if (streak === 7) milestone = 'streak_7'
+    else if (streak === 3) milestone = 'streak_3'
+  }
+
+  return { todayCount, weekCount, streak, milestone }
 }

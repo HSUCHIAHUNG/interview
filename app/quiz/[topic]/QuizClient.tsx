@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Question, TopicMeta } from "@/lib/topics";
+import MilestonePopup from "@/app/components/MilestonePopup";
+import type { MilestoneType } from "@/lib/db/queries";
 
 interface Props {
   slug: string;
@@ -57,6 +59,9 @@ export default function QuizClient({
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState<QForm>({ question: "", options: ["", "", "", ""], answer: 0, explanation: "" });
   const [adding, setAdding] = useState(false);
+
+  // Milestone popup
+  const [milestone, setMilestone] = useState<MilestoneType | null>(null);
 
   function exitManage() {
     setManageMode(false);
@@ -367,6 +372,7 @@ export default function QuizClient({
   if (phase === "result") {
     return (
       <div className="max-w-xl mx-auto text-center">
+        {milestone && <MilestonePopup milestone={milestone} onClose={() => setMilestone(null)} />}
         {isLoggedIn && mode === "topic" && (
           <div className="flex justify-end mb-4">
             <button
@@ -441,6 +447,8 @@ export default function QuizClient({
 
   return (
     <div className="max-w-xl mx-auto">
+      {milestone && <MilestonePopup milestone={milestone} onClose={() => setMilestone(null)} />}
+
       {/* Manage button */}
       {isLoggedIn && mode === "topic" && (
         <div className="flex justify-end mb-4">

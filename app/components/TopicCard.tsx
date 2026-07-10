@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import type { TopicMeta } from "@/lib/topics";
 import { toggleTopicCompletion } from "@/app/actions/topic-completion";
+import MilestonePopup from "./MilestonePopup";
+import type { MilestoneType } from "@/lib/db/queries";
 
 const DIFFICULTY_COLOR = {
   easy: "bg-green-900/40 text-green-400",
@@ -54,11 +56,34 @@ export default function TopicCard({
 }: Props) {
   const [completed, setCompleted] = useState(initialCompleted);
   const [isPending, startTransition] = useTransition();
+  const [milestone, setMilestone] = useState<MilestoneType | null>(null);
 
   function handleToggle() {
     if (!isLoggedIn) return;
     const next = !completed;
     setCompleted(next);
+    if (next) {
+      fetch("/api/question-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicSlug: slug, mode: "completion" }),
+      })
+        .then(r => r.json())
+        .then((d: { milestone?: MilestoneType }) => {
+          if (d.milestone) setMilestone(d.milestone)
+          window.dispatchEvent(new Event("progress-updated"))
+        })
+        .catch(() => {});
+    } else {
+      // Only deletes today's log; past days are preserved
+      fetch("/api/question-log", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicSlug: slug }),
+      })
+        .then(() => window.dispatchEvent(new Event("progress-updated")))
+        .catch(() => {});
+    }
     startTransition(async () => {
       const result = await toggleTopicCompletion(slug);
       setCompleted(result);
@@ -71,6 +96,7 @@ export default function TopicCard({
         completed ? "border-green-700" : "border-gray-800 hover:border-gray-700"
       }`}
     >
+      {milestone && <MilestonePopup milestone={milestone} onClose={() => setMilestone(null)} />}
       <div className="flex items-start justify-between gap-2">
         <div>
           <h2 className="text-xl font-bold text-gray-100">{meta.title}</h2>

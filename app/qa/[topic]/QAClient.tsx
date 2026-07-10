@@ -3,6 +3,8 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import type { Question, TopicMeta } from "@/lib/topics";
+import MilestonePopup from "@/app/components/MilestonePopup";
+import type { MilestoneType } from "@/lib/db/queries";
 
 interface Props {
   slug: string;
@@ -65,6 +67,8 @@ export default function QAClient({
   const [addQuestion, setAddQuestion] = useState("");
   const [addExplanation, setAddExplanation] = useState("");
   const [adding, setAdding] = useState(false);
+
+  const [milestone, setMilestone] = useState<MilestoneType | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const followUpInputRef = useRef<HTMLInputElement>(null);
@@ -304,6 +308,7 @@ export default function QAClient({
       body: JSON.stringify({ questionId: q?.id, mode: "qa", answer: userAnswer }),
     }).catch(() => {});
 
+
     setIsLoading(false);
     setTimeout(() => followUpInputRef.current?.focus(), 100);
   }
@@ -415,6 +420,7 @@ export default function QAClient({
   if (phase === "result") {
     return (
       <div className="max-w-2xl mx-auto">
+        {milestone && <MilestonePopup milestone={milestone} onClose={() => setMilestone(null)} />}
         {isLoggedIn && !onBack && (
           <div className="flex justify-end mb-4">
             <button
@@ -480,6 +486,8 @@ export default function QAClient({
 
   return (
     <div className="max-w-2xl mx-auto">
+      {milestone && <MilestonePopup milestone={milestone} onClose={() => setMilestone(null)} />}
+
       {/* Manage button */}
       {isLoggedIn && !onBack && (
         <div className="flex justify-end mb-4">
