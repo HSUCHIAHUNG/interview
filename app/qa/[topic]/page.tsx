@@ -33,6 +33,7 @@ export default async function QAPage({
         questions={data.questions}
         initialCurrent={progress.currentQuestion}
         initialAnswers={progress.qaAnswers}
+        isLoggedIn={!!userId}
       />
     </main>
   );

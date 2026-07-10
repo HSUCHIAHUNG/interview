@@ -1,6 +1,6 @@
 import { eq, sql, and, inArray } from 'drizzle-orm'
 import { db } from './index'
-import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints } from './schema'
+import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections } from './schema'
 import type { TopicMeta, Question } from '@/lib/topics'
 
 export type TopicCard = {
@@ -226,6 +226,68 @@ export async function getTopicSectionsByTheme(theme: string): Promise<ThemeTopic
 export async function getDistinctThemes(): Promise<string[]> {
   const rows = await db.selectDistinct({ theme: topics.theme }).from(topics)
   return rows.map(r => r.theme)
+}
+
+// ─── Note sections ──────────────────────────────────────────────────────────
+
+export async function getSlugsWithNotes(): Promise<Set<string>> {
+  const rows = await db.selectDistinct({ slug: topicNoteSections.slug }).from(topicNoteSections)
+  return new Set(rows.map(r => r.slug))
+}
+
+export async function getNotesBySlug(slug: string) {
+  return db
+    .select({ id: topicNoteSections.id, heading: topicNoteSections.heading, content: topicNoteSections.content, order: topicNoteSections.order })
+    .from(topicNoteSections)
+    .where(eq(topicNoteSections.slug, slug))
+    .orderBy(topicNoteSections.order, topicNoteSections.id)
+}
+
+export async function createNoteSection(slug: string, heading: string, content: string, order: number) {
+  const [row] = await db.insert(topicNoteSections).values({ slug, heading, content, order }).returning({ id: topicNoteSections.id })
+  return row
+}
+
+export async function updateNoteSection(id: number, heading: string, content: string) {
+  await db.update(topicNoteSections).set({ heading, content }).where(eq(topicNoteSections.id, id))
+}
+
+export async function deleteNoteSection(id: number) {
+  await db.delete(topicNoteSections).where(eq(topicNoteSections.id, id))
+}
+
+export async function updateNoteSectionOrder(id: number, order: number) {
+  await db.update(topicNoteSections).set({ order }).where(eq(topicNoteSections.id, id))
+}
+
+// ─── Questions CRUD ──────────────────────────────────────────────────────────
+
+export async function createQuestion(topicId: number, question: string, options: string[], answer: number, explanation: string, order: number) {
+  const [row] = await db.insert(questions).values({ topicId, question, options, answer, explanation, order }).returning({ id: questions.id })
+  return row
+}
+
+export async function updateQuestion(id: number, question: string, options: string[], answer: number, explanation: string) {
+  await db.update(questions).set({ question, options, answer, explanation }).where(eq(questions.id, id))
+}
+
+export async function deleteQuestion(id: number) {
+  await db.delete(questions).where(eq(questions.id, id))
+}
+
+export async function getTopicIdBySlug(slug: string): Promise<number | null> {
+  const [row] = await db.select({ id: topics.id }).from(topics).where(eq(topics.slug, slug)).limit(1)
+  return row?.id ?? null
+}
+
+export async function getMaxQuestionOrder(topicId: number): Promise<number> {
+  const [row] = await db.select({ max: sql<number>`coalesce(max("order"), -1)` }).from(questions).where(eq(questions.topicId, topicId))
+  return row?.max ?? -1
+}
+
+export async function getMaxNoteSectionOrder(slug: string): Promise<number> {
+  const [row] = await db.select({ max: sql<number>`coalesce(max("order"), -1)` }).from(topicNoteSections).where(eq(topicNoteSections.slug, slug))
+  return row?.max ?? -1
 }
 
 export async function getQuestionsByTheme(theme: string): Promise<Question[]> {

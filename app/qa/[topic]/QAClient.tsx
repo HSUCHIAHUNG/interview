@@ -11,6 +11,7 @@ interface Props {
   initialCurrent?: number;
   initialAnswers?: (string | null)[] | null;
   onBack?: () => void;
+  isLoggedIn?: boolean;
 }
 
 type Phase = "answer" | "feedback" | "result";
@@ -27,17 +28,21 @@ export default function QAClient({
   initialCurrent = 0,
   initialAnswers = null,
   onBack,
+  isLoggedIn,
 }: Props) {
   const resolvedAnswers: (string | null)[] =
     initialAnswers ?? Array(questions.length).fill(null);
 
   const currentWasAnswered = resolvedAnswers[initialCurrent] !== null;
 
+  // Local questions state for management
+  const [localQs, setLocalQs] = useState<Question[]>(questions);
+
   const [current, setCurrent] = useState(initialCurrent);
   const [qaAnswers, setQaAnswers] = useState<(string | null)[]>(resolvedAnswers);
   const [userAnswer, setUserAnswer] = useState(resolvedAnswers[initialCurrent] ?? "");
   const [feedback, setFeedback] = useState(
-    currentWasAnswered ? questions[initialCurrent].explanation : "",
+    currentWasAnswered ? localQs[initialCurrent]?.explanation ?? "" : "",
   );
   const [phase, setPhase] = useState<Phase>(currentWasAnswered ? "feedback" : "answer");
   const [isLoading, setIsLoading] = useState(false);
@@ -48,11 +53,202 @@ export default function QAClient({
   const [isFollowUpLoading, setIsFollowUpLoading] = useState(false);
   const [streamingResponse, setStreamingResponse] = useState("");
 
+  // Management state
+  const [manageMode, setManageMode] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editQuestion, setEditQuestion] = useState("");
+  const [editExplanation, setEditExplanation] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addQuestion, setAddQuestion] = useState("");
+  const [addExplanation, setAddExplanation] = useState("");
+  const [adding, setAdding] = useState(false);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const followUpInputRef = useRef<HTMLInputElement>(null);
 
-  const q = questions[current];
+  const q = localQs[current];
 
+  // ── Management functions ──────────────────────────────────────────────────
+  function exitManage() {
+    setManageMode(false);
+    setEditingId(null);
+    setShowAdd(false);
+    setCurrent(0);
+    setUserAnswer("");
+    setFeedback("");
+    setIsError(false);
+    setPhase("answer");
+    setFollowUps([]);
+    setFollowUpInput("");
+    setQaAnswers(Array(localQs.length).fill(null));
+  }
+
+  function startEditQA(q: Question) {
+    setEditingId(q.id);
+    setEditQuestion(q.question);
+    setEditExplanation(q.explanation);
+  }
+
+  async function saveEditQA(q: Question) {
+    if (!editQuestion.trim() || !editExplanation.trim()) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/topics/${slug}/questions/${q.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: editQuestion,
+          options: q.options,
+          answer: q.answer,
+          explanation: editExplanation,
+        }),
+      });
+      setLocalQs(prev => prev.map(item => item.id === q.id
+        ? { ...item, question: editQuestion, explanation: editExplanation }
+        : item
+      ));
+      setEditingId(null);
+    } finally { setSaving(false); }
+  }
+
+  async function deleteQA(id: number) {
+    setDeleting(id);
+    try {
+      await fetch(`/api/topics/${slug}/questions/${id}`, { method: "DELETE" });
+      setLocalQs(prev => prev.filter(q => q.id !== id));
+      setDeleteConfirm(null);
+    } finally { setDeleting(null); }
+  }
+
+  async function addQA() {
+    if (!addQuestion.trim() || !addExplanation.trim() || adding) return;
+    setAdding(true);
+    try {
+      const res = await fetch(`/api/topics/${slug}/questions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: addQuestion, options: [], answer: 0, explanation: addExplanation }),
+      });
+      const { id } = await res.json() as { id: number };
+      setLocalQs(prev => [...prev, { id, question: addQuestion, options: [], answer: 0, explanation: addExplanation }]);
+      setAddQuestion("");
+      setAddExplanation("");
+      setShowAdd(false);
+    } finally { setAdding(false); }
+  }
+
+  // ── Management panel ──────────────────────────────────────────────────────
+  if (manageMode) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <button onClick={exitManage} className="text-sm text-gray-500 hover:text-gray-300 transition mb-6 block">
+          ← 回到練習
+        </button>
+        <h2 className="text-lg font-semibold text-gray-100 mb-4">管理問答題（{localQs.length} 題）</h2>
+
+        <div className="space-y-3">
+          {localQs.map((q, idx) => (
+            <div key={q.id} className="bg-gray-900 rounded-xl border border-gray-800 p-4">
+              {editingId === q.id ? (
+                <div className="space-y-3">
+                  <textarea
+                    value={editQuestion}
+                    onChange={e => setEditQuestion(e.target.value)}
+                    rows={3}
+                    placeholder="問題"
+                    className="w-full bg-gray-800 text-gray-100 text-sm rounded-lg border border-gray-700 focus:border-gray-500 focus:outline-none px-3 py-2 font-mono resize-y"
+                  />
+                  <textarea
+                    value={editExplanation}
+                    onChange={e => setEditExplanation(e.target.value)}
+                    rows={5}
+                    placeholder="參考答案 / 解析"
+                    className="w-full bg-gray-800 text-gray-300 text-sm rounded-lg border border-gray-700 focus:border-gray-500 focus:outline-none px-3 py-2 font-mono resize-y"
+                  />
+                  <div className="flex gap-2">
+                    <button onClick={() => saveEditQA(q)} disabled={saving}
+                      className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+                      {saving ? "儲存中..." : "儲存"}
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="text-sm text-gray-500 hover:text-gray-300 px-3">取消</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-200">
+                      Q{idx + 1}. {q.question.length > 60 ? q.question.slice(0, 60) + "…" : q.question}
+                    </p>
+                    <p className="text-xs text-gray-600 mt-0.5 truncate">{q.explanation.slice(0, 50)}…</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => startEditQA(q)}
+                      className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 hover:border-blue-600 px-2 py-1 rounded-lg transition">
+                      編輯
+                    </button>
+                    {deleteConfirm === q.id ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-red-400">確定？</span>
+                        <button onClick={() => deleteQA(q.id)} disabled={deleting === q.id}
+                          className="text-xs bg-red-900/50 hover:bg-red-900 text-red-400 border border-red-800 px-2 py-1 rounded transition disabled:opacity-50">
+                          {deleting === q.id ? "..." : "刪除"}
+                        </button>
+                        <button onClick={() => setDeleteConfirm(null)} className="text-xs text-gray-600 hover:text-gray-400">取消</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setDeleteConfirm(q.id)}
+                        className="text-gray-700 hover:text-red-400 transition text-lg leading-none px-1">×</button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4">
+          {showAdd ? (
+            <div className="bg-gray-900 border border-gray-700 rounded-xl p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-gray-400">新增問答題</h3>
+              <textarea
+                value={addQuestion}
+                onChange={e => setAddQuestion(e.target.value)}
+                rows={3}
+                placeholder="問題"
+                className="w-full bg-gray-800 text-gray-100 text-sm rounded-lg border border-gray-700 focus:border-gray-500 focus:outline-none px-3 py-2 font-mono resize-y"
+              />
+              <textarea
+                value={addExplanation}
+                onChange={e => setAddExplanation(e.target.value)}
+                rows={5}
+                placeholder="參考答案 / 解析"
+                className="w-full bg-gray-800 text-gray-300 text-sm rounded-lg border border-gray-700 focus:border-gray-500 focus:outline-none px-3 py-2 font-mono resize-y"
+              />
+              <div className="flex gap-2">
+                <button onClick={addQA}
+                  disabled={!addQuestion.trim() || !addExplanation.trim() || adding}
+                  className="bg-violet-700 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+                  {adding ? "新增中..." : "新增"}
+                </button>
+                <button onClick={() => { setShowAdd(false); setAddQuestion(""); setAddExplanation(""); }}
+                  className="text-sm text-gray-500 hover:text-gray-300 px-3">取消</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setShowAdd(true)}
+              className="w-full py-3 border border-dashed border-gray-700 hover:border-gray-500 text-gray-500 hover:text-gray-300 text-sm rounded-xl transition">
+              ＋ 新增題目
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── QA logic ──────────────────────────────────────────────────────────────
   function saveProgress(nextQuestion: number, answers: (string | null)[]) {
     fetch("/api/progress", {
       method: "POST",
@@ -77,7 +273,7 @@ export default function QAClient({
     const savedAnswer = answers[idx];
     if (savedAnswer !== null) {
       setUserAnswer(savedAnswer);
-      setFeedback(questions[idx].explanation);
+      setFeedback(localQs[idx]?.explanation ?? "");
       setPhase("feedback");
     } else {
       setUserAnswer("");
@@ -94,7 +290,7 @@ export default function QAClient({
     setFeedback("");
     setPhase("feedback");
 
-    const fixedFeedback = q.explanation;
+    const fixedFeedback = q?.explanation ?? "";
     setFeedback(fixedFeedback);
 
     const newQaAnswers = [...qaAnswers];
@@ -105,7 +301,7 @@ export default function QAClient({
     fetch("/api/user-answers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ questionId: q.id, mode: "qa", answer: userAnswer }),
+      body: JSON.stringify({ questionId: q?.id, mode: "qa", answer: userAnswer }),
     }).catch(() => {});
 
     setIsLoading(false);
@@ -126,7 +322,7 @@ export default function QAClient({
     const history: FollowUpMessage[] = [
       {
         role: "user",
-        content: `題目：${q.question}\n\n參考答案：${q.explanation}\n\n應試者的回答：${userAnswer}`,
+        content: `題目：${q?.question}\n\n參考答案：${q?.explanation}\n\n應試者的回答：${userAnswer}`,
       },
       { role: "model", content: feedback },
       ...historyBeforeThisMessage,
@@ -186,7 +382,7 @@ export default function QAClient({
 
   function goNext() {
     const nextIdx = current + 1;
-    if (nextIdx < questions.length) {
+    if (nextIdx < localQs.length) {
       navigateTo(nextIdx, qaAnswers);
     } else {
       saveProgress(0, qaAnswers);
@@ -195,7 +391,7 @@ export default function QAClient({
   }
 
   function restart() {
-    const empty = Array(questions.length).fill(null) as (string | null)[];
+    const empty = Array(localQs.length).fill(null) as (string | null)[];
     setQaAnswers(empty);
     saveProgress(0, empty);
     setCurrent(0);
@@ -208,8 +404,7 @@ export default function QAClient({
     setTimeout(() => textareaRef.current?.focus(), 100);
   }
 
-  // Derive result list from qaAnswers (single source of truth)
-  const completedResults = questions
+  const completedResults = localQs
     .map((q, i) =>
       qaAnswers[i] !== null
         ? { question: q.question, userAnswer: qaAnswers[i]!, feedback: q.explanation }
@@ -220,10 +415,20 @@ export default function QAClient({
   if (phase === "result") {
     return (
       <div className="max-w-2xl mx-auto">
+        {isLoggedIn && !onBack && (
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => setManageMode(true)}
+              className="text-sm px-4 py-1.5 rounded-lg border border-gray-700 text-gray-500 hover:border-gray-500 hover:text-gray-300 transition"
+            >
+              ✏️ 管理題目
+            </button>
+          </div>
+        )}
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-8 text-center">
           <div className="text-5xl mb-4">🎉</div>
           <h2 className="text-2xl font-bold text-gray-100 mb-2">全部回答完畢！</h2>
-          <p className="text-gray-500 mb-8">共 {questions.length} 題，以下是你的作答紀錄</p>
+          <p className="text-gray-500 mb-8">共 {localQs.length} 題，以下是你的作答紀錄</p>
 
           <div className="text-left space-y-4 mb-8">
             {completedResults.map((r, i) => (
@@ -275,6 +480,18 @@ export default function QAClient({
 
   return (
     <div className="max-w-2xl mx-auto">
+      {/* Manage button */}
+      {isLoggedIn && !onBack && (
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={() => setManageMode(true)}
+            className="text-sm px-4 py-1.5 rounded-lg border border-gray-700 text-gray-500 hover:border-gray-500 hover:text-gray-300 transition"
+          >
+            ✏️ 管理題目
+          </button>
+        </div>
+      )}
+
       {/* Back button */}
       <div className="mb-8">
         {current === 0 ? (
@@ -298,12 +515,12 @@ export default function QAClient({
       <div className="mb-6">
         <div className="flex justify-between text-sm text-gray-500 mb-2">
           <span>{meta.title} — 問答模式</span>
-          <span>{current + 1} / {questions.length}</span>
+          <span>{current + 1} / {localQs.length}</span>
         </div>
         <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
           <div
             className="h-full bg-blue-500 rounded-full transition-all duration-300"
-            style={{ width: `${((current + 1) / questions.length) * 100}%` }}
+            style={{ width: `${((current + 1) / localQs.length) * 100}%` }}
           />
         </div>
       </div>
@@ -316,7 +533,7 @@ export default function QAClient({
           </p>
         </div>
         <h2 className="text-lg font-semibold text-gray-100 mb-6 leading-relaxed whitespace-pre-wrap">
-          {q.question}
+          {q?.question}
         </h2>
 
         <textarea
@@ -453,7 +670,7 @@ export default function QAClient({
                     onClick={goNext}
                     className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition"
                   >
-                    {current + 1 < questions.length ? "下一題 →" : "查看總結"}
+                    {current + 1 < localQs.length ? "下一題 →" : "查看總結"}
                   </button>
                 </div>
               </>

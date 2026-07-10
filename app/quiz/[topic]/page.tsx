@@ -34,6 +34,7 @@ export default async function QuizTopicPage({
         questions={data.questions}
         initialCurrent={progress.currentQuestion}
         initialAnswers={progress.quizAnswers}
+        isLoggedIn={!!userId}
       />
     </main>
   );

@@ -67,6 +67,15 @@ export const userTopicCompletions = pgTable('user_topic_completions', {
   unique('user_topic_completion_uniq').on(t.clerkId, t.topicSlug),
 ])
 
+export const topicNoteSections = pgTable('topic_note_sections', {
+  id: serial('id').primaryKey(),
+  slug: text('slug').notNull(),
+  heading: text('heading').notNull(),
+  content: text('content').notNull(),
+  order: integer('order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 export const methodKeyPoints = pgTable('method_key_points', {
   id: serial('id').primaryKey(),
   slug: text('slug').notNull(),

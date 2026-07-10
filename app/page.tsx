@@ -2,14 +2,14 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { UserButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
-import { getAllTopicsFromDB, getUserCompletedTopics, getSubCategoriesByTheme, getUserPracticeProgress } from '@/lib/db/queries'
-import { hasDemoPage, hasNotesPage, hasPracticePage } from '@/lib/topics'
+import { getAllTopicsFromDB, getUserCompletedTopics, getSubCategoriesByTheme, getUserPracticeProgress, getSlugsWithNotes } from '@/lib/db/queries'
+import { hasDemoPage, hasPracticePage } from '@/lib/topics'
 import { getMethodChallenge } from '@/lib/array-challenges'
 import ThemeFilter from '@/app/components/ThemeFilter'
 
 export default async function HomePage() {
   const { userId } = await auth()
-  const topics = await getAllTopicsFromDB()
+  const [topics, slugsWithNotes] = await Promise.all([getAllTopicsFromDB(), getSlugsWithNotes()])
   const totalQuestions = topics.reduce((acc, t) => acc + t.questionCount, 0)
   const completedSlugs = userId
     ? await getUserCompletedTopics(userId)
@@ -81,7 +81,7 @@ export default async function HomePage() {
               meta: topic.meta,
               questionCount: topic.questionCount,
               hasDemo: hasDemoPage(topic.slug),
-              hasNotes: hasNotesPage(topic.slug),
+              hasNotes: slugsWithNotes.has(topic.slug),
               hasPractice: hasPracticePage(topic.slug),
               initialCompleted: completedSlugs.has(topic.slug),
               isLoggedIn: !!userId,
