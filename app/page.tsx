@@ -8,6 +8,7 @@ import { getMethodChallenge } from '@/lib/array-challenges'
 import ThemeFilter from '@/app/components/ThemeFilter'
 import DailyProgress from '@/app/components/DailyProgress'
 import GoalButton from '@/app/components/GoalButton'
+import MemoButton from '@/app/components/MemoButton'
 
 export default async function HomePage() {
   const { userId } = await auth()
@@ -36,6 +37,7 @@ export default async function HomePage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex justify-end items-center gap-3 mb-6">
+          {userId && <MemoButton />}
           {userId && <GoalButton />}
           {userId ? (
             <UserButton />

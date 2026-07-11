@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getMethodChallenge } from '@/lib/array-challenges'
+import { getPracticeChallenge } from '@/lib/array-challenges'
 import { auth } from '@clerk/nextjs/server'
 import { getUserCompletedProblems } from '@/lib/db/queries'
 
@@ -17,7 +17,7 @@ interface Props {
 
 export default async function PracticeListPage({ params }: Props) {
   const { slug } = await params
-  const entry = getMethodChallenge(slug)
+  const entry = getPracticeChallenge(slug)
   if (!entry) notFound()
 
   const { userId } = await auth()

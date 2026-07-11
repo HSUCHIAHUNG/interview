@@ -131,35 +131,23 @@ export default function TopicCard({
       </div>
 
       <div className="flex gap-2 mt-auto pt-2 flex-wrap">
-        {hasPractice ? (
-          <>
-            <Link
-              href={`/practice/${slug}`}
-              className="flex-1 text-center bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2"
-            >
-              實作練習
-              {practiceProgress && (
-                <span className="text-xs opacity-75 font-normal">
-                  {practiceProgress.completed}/{practiceProgress.total}
-                </span>
-              )}
-            </Link>
-            {hasNotes && (
-              <Link
-                href={`/notes/${slug}`}
-                className="flex-1 text-center bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-sm font-semibold py-2 rounded-lg transition"
-              >
-                查看說明
-              </Link>
+        {/* 實作練習（有 practice challenge 的主題） */}
+        {hasPractice && (
+          <Link
+            href={`/practice/${slug}`}
+            className="flex-1 text-center bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2"
+          >
+            實作練習
+            {practiceProgress && (
+              <span className="text-xs opacity-75 font-normal">
+                {practiceProgress.completed}/{practiceProgress.total}
+              </span>
             )}
-            <Link
-              href={`/listen/${slug}`}
-              className="text-center bg-violet-900/40 hover:bg-violet-900/70 text-violet-300 border border-violet-800 text-sm font-semibold px-4 py-2 rounded-lg transition"
-            >
-              🎧 聆聽
-            </Link>
-          </>
-        ) : (
+          </Link>
+        )}
+
+        {/* 選擇題 + 問答（有題目的主題，無論是否有實作練習） */}
+        {questionCount > 0 && (
           <>
             <Link
               href={`/quiz/${slug}`}
@@ -175,7 +163,9 @@ export default function TopicCard({
             </Link>
           </>
         )}
-        {!hasPractice && hasNotes && (
+
+        {/* 查看說明 */}
+        {hasNotes && (
           <Link
             href={`/notes/${slug}`}
             className="w-22 shrink-0 whitespace-nowrap text-center bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-sm font-semibold px-4 py-2 rounded-lg transition"
@@ -183,8 +173,10 @@ export default function TopicCard({
             查看說明
           </Link>
         )}
-        {!hasPractice &&
-          (hasDemo ? (
+
+        {/* Demo（只有非實作練習主題才有） */}
+        {!hasPractice && (
+          hasDemo ? (
             <Link
               href={`/demo/${slug}`}
               className="w-22 shrink-0 whitespace-nowrap text-center bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-sm font-semibold px-4 py-2 rounded-lg transition"
@@ -195,15 +187,16 @@ export default function TopicCard({
             <span className="w-22 shrink-0 whitespace-nowrap text-center bg-gray-900 text-gray-700 border border-gray-800 text-sm font-semibold px-4 py-2 rounded-lg cursor-not-allowed">
               Demo
             </span>
-          ))}
-        {!hasPractice && (
-          <Link
-            href={`/listen/${slug}`}
-            className="w-22 shrink-0 whitespace-nowrap text-center bg-violet-900/40 hover:bg-violet-900/70 text-violet-300 border border-violet-800 text-sm font-semibold px-4 py-2 rounded-lg transition"
-          >
-            🎧 聆聽
-          </Link>
+          )
         )}
+
+        {/* 聆聽 */}
+        <Link
+          href={`/listen/${slug}`}
+          className="w-22 shrink-0 whitespace-nowrap text-center bg-violet-900/40 hover:bg-violet-900/70 text-violet-300 border border-violet-800 text-sm font-semibold px-4 py-2 rounded-lg transition"
+        >
+          🎧 聆聽
+        </Link>
       </div>
 
       {isLoggedIn && (

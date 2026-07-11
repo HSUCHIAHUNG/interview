@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getMethodChallenge } from '@/lib/array-challenges'
+import { getPracticeChallenge } from '@/lib/array-challenges'
 import { auth } from '@clerk/nextjs/server'
 import { getUserCompletedProblems } from '@/lib/db/queries'
 import PracticeClient from './PracticeClient'
@@ -18,7 +18,7 @@ interface Props {
 
 export default async function ProblemPage({ params }: Props) {
   const { slug, id } = await params
-  const entry = getMethodChallenge(slug)
+  const entry = getPracticeChallenge(slug)
   if (!entry) notFound()
 
   const problem = entry.problems.find(p => p.id === id)

@@ -111,6 +111,13 @@ export const userQuestionLog = pgTable('user_question_log', {
   loggedAt: timestamp('logged_at').defaultNow().notNull(),
 })
 
+export const userNotes = pgTable('user_notes', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().unique(),
+  content: text('content').notNull().default(''),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 export type Topic = typeof topics.$inferSelect
 export type Question = typeof questions.$inferSelect
 export type UserAnswer = typeof userAnswers.$inferSelect

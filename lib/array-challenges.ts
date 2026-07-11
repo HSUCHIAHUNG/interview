@@ -3822,6 +3822,16 @@ export function getAllMethodSlugs(): string[] {
   return arrayMethodChallenges.map(e => e.slug)
 }
 
+import { hasTsChallenge, getTsChallenge, tsChallenges } from './ts-challenges'
+
 export function hasPracticeChallenge(slug: string): boolean {
-  return arrayMethodChallenges.some(e => e.slug === slug)
+  return arrayMethodChallenges.some(e => e.slug === slug) || hasTsChallenge(slug)
+}
+
+export function getPracticeChallenge(slug: string): MethodEntry | undefined {
+  return arrayMethodChallenges.find(e => e.slug === slug) ?? getTsChallenge(slug)
+}
+
+export function getAllPracticeSlugs(): string[] {
+  return [...arrayMethodChallenges.map(e => e.slug), ...tsChallenges.map(e => e.slug)]
 }

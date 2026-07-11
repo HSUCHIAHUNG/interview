@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm'
 import fs from 'fs'
 import path from 'path'
 import { arrayMethodChallenges } from '../lib/array-challenges'
+import { tsChallenges } from '../lib/ts-challenges'
 
 const client = neon(process.env.DATABASE_URL!)
 const db = drizzle(client, { schema })
@@ -66,6 +67,30 @@ async function seed() {
       })
     }
     console.log(`✓ ${slug} (陣列方法): ${notes.sections.length} 個章節`)
+  }
+
+  // Seed from ts-challenges notes
+  for (const entry of tsChallenges) {
+    const { slug, notes } = entry
+    if (!notes) continue
+
+    const existing = await db.select({ id: schema.topicNoteSections.id })
+      .from(schema.topicNoteSections)
+      .where(eq(schema.topicNoteSections.slug, slug))
+    if (existing.length > 0) {
+      console.log(`⚠ ${slug}: 已有資料，跳過`)
+      continue
+    }
+
+    for (let i = 0; i < notes.sections.length; i++) {
+      await db.insert(schema.topicNoteSections).values({
+        slug,
+        heading: notes.sections[i].heading,
+        content: notes.sections[i].content,
+        order: i,
+      })
+    }
+    console.log(`✓ ${slug} (TypeScript): ${notes.sections.length} 個章節`)
   }
 
   console.log('\n✅ Notes seed 完成')
