@@ -39,6 +39,14 @@ export default async function HomePage() {
         <div className="flex justify-end items-center gap-3 mb-6">
           {userId && <MemoButton />}
           {userId && <GoalButton />}
+          {userId && (
+            <Link
+              href="/starred"
+              className="flex items-center gap-1.5 text-sm font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 px-3 py-1.5 rounded-lg transition"
+            >
+              ⭐ 必考題
+            </Link>
+          )}
           {userId ? (
             <UserButton />
           ) : (

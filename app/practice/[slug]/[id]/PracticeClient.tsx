@@ -21,6 +21,7 @@ interface Props {
   topicSlug: string
   isLoggedIn: boolean
   initialCompleted: boolean
+  initialStarred?: boolean
   prevProblem: NavItem | null
   nextProblem: NavItem | null
 }
@@ -31,6 +32,7 @@ export default function PracticeClient({
   topicSlug,
   isLoggedIn,
   initialCompleted,
+  initialStarred = false,
   prevProblem,
   nextProblem,
 }: Props) {
@@ -38,7 +40,18 @@ export default function PracticeClient({
   const [results, setResults] = useState<TestResult[] | null>(null)
   const [completed, setCompleted] = useState(initialCompleted)
   const [saving, setSaving] = useState(false)
+  const [starred, setStarred] = useState(initialStarred)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  async function toggleStar() {
+    const next = !starred
+    setStarred(next)
+    fetch('/api/starred-problems', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topicSlug, problemId: problem.id }),
+    }).catch(() => {})
+  }
 
   useEffect(() => {
     setCode(problem.initialCode)
@@ -101,6 +114,17 @@ export default function PracticeClient({
       {/* Left: Problem description */}
       <div className="flex flex-col gap-4">
         <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+          {isLoggedIn && (
+            <div className="flex justify-end mb-3">
+              <button
+                onClick={toggleStar}
+                title={starred ? '取消必考題' : '加入必考題'}
+                className={`text-xl transition ${starred ? 'text-yellow-400' : 'text-gray-700 hover:text-yellow-400'}`}
+              >
+                {starred ? '★' : '☆'}
+              </button>
+            </div>
+          )}
           <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap">
             {problem.description}
           </p>

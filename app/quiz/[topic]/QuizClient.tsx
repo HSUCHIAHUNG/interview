@@ -16,6 +16,7 @@ interface Props {
   initialAnswers?: (number | null)[] | null;
   onBack?: () => void;
   isLoggedIn?: boolean;
+  initialStarred?: number[];
 }
 
 type Phase = "quiz" | "result";
@@ -36,6 +37,7 @@ export default function QuizClient({
   initialAnswers = null,
   onBack,
   isLoggedIn,
+  initialStarred = [],
 }: Props) {
   const router = useRouter();
 
@@ -62,6 +64,20 @@ export default function QuizClient({
 
   // Milestone popup
   const [milestone, setMilestone] = useState<MilestoneType | null>(null);
+  const [starred, setStarred] = useState<Set<number>>(() => new Set(initialStarred));
+
+  async function toggleStar(questionId: number) {
+    setStarred(prev => {
+      const next = new Set(prev);
+      if (next.has(questionId)) next.delete(questionId); else next.add(questionId);
+      return next;
+    });
+    fetch('/api/starred', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionId }),
+    }).catch(() => {});
+  }
 
   function exitManage() {
     setManageMode(false);
@@ -500,6 +516,15 @@ export default function QuizClient({
           <p className="text-xs font-semibold text-blue-400 uppercase tracking-wide">
             第 {current + 1} 題
           </p>
+          {isLoggedIn && q && (
+            <button
+              onClick={() => toggleStar(q.id)}
+              title={starred.has(q.id) ? "取消必考題" : "加入必考題"}
+              className={`text-xl transition ${starred.has(q.id) ? "text-yellow-400" : "text-gray-700 hover:text-yellow-400"}`}
+            >
+              {starred.has(q.id) ? "★" : "☆"}
+            </button>
+          )}
         </div>
         <h2 className="text-lg font-semibold text-gray-100 mb-6 leading-relaxed whitespace-pre-wrap">
           {q?.question}

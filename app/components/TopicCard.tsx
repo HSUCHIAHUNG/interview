@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import Link from "next/link";
 import type { TopicMeta } from "@/lib/topics";
 import { toggleTopicCompletion } from "@/app/actions/topic-completion";
@@ -57,6 +57,34 @@ export default function TopicCard({
   const [completed, setCompleted] = useState(initialCompleted);
   const [isPending, startTransition] = useTransition();
   const [milestone, setMilestone] = useState<MilestoneType | null>(null);
+  const [title, setTitle] = useState(meta.title);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editValue, setEditValue] = useState(meta.title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function startEditing() {
+    if (!isLoggedIn) return;
+    setEditValue(title);
+    setEditingTitle(true);
+    setTimeout(() => inputRef.current?.select(), 0);
+  }
+
+  async function saveTitle() {
+    const trimmed = editValue.trim();
+    setEditingTitle(false);
+    if (!trimmed || trimmed === title) return;
+    setTitle(trimmed);
+    await fetch(`/api/topics/${slug}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: trimmed }),
+    });
+  }
+
+  function handleTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') { e.preventDefault(); saveTitle(); }
+    if (e.key === 'Escape') { setEditingTitle(false); setEditValue(title); }
+  }
 
   function handleToggle() {
     if (!isLoggedIn) return;
@@ -98,8 +126,27 @@ export default function TopicCard({
     >
       {milestone && <MilestonePopup milestone={milestone} onClose={() => setMilestone(null)} />}
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-bold text-gray-100">{meta.title}</h2>
+        <div className="flex-1 min-w-0">
+          {editingTitle ? (
+            <input
+              ref={inputRef}
+              value={editValue}
+              onChange={e => setEditValue(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={handleTitleKeyDown}
+              className="text-xl font-bold text-gray-100 bg-gray-800 border border-gray-600 rounded-lg px-2 py-0.5 w-full focus:outline-none focus:border-blue-500"
+              autoFocus
+            />
+          ) : (
+            <h2
+              className={`text-xl font-bold text-gray-100 ${isLoggedIn ? 'cursor-pointer hover:text-gray-300 group' : ''}`}
+              onClick={startEditing}
+              title={isLoggedIn ? '點擊編輯名稱' : undefined}
+            >
+              {title}
+              {isLoggedIn && <span className="ml-1.5 text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition">✏️</span>}
+            </h2>
+          )}
           <p className="text-sm text-gray-500 mt-1">{meta.description}</p>
         </div>
         <span

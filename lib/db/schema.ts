@@ -9,6 +9,7 @@ export const topics = pgTable('topics', {
   subCategory: text('sub_category'),
   category: text('category').notNull(),
   difficulty: text('difficulty').notNull(),
+  order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -110,6 +111,25 @@ export const userQuestionLog = pgTable('user_question_log', {
   mode: text('mode').notNull(),
   loggedAt: timestamp('logged_at').defaultNow().notNull(),
 })
+
+export const userStarredProblems = pgTable('user_starred_problems', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  topicSlug: text('topic_slug').notNull(),
+  problemId: text('problem_id').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  unique('user_starred_problem_uniq').on(t.userId, t.topicSlug, t.problemId),
+])
+
+export const userStarredQuestions = pgTable('user_starred_questions', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  questionId: integer('question_id').references(() => questions.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
+  unique('user_starred_q_uniq').on(t.userId, t.questionId),
+])
 
 export const userNotes = pgTable('user_notes', {
   id: serial('id').primaryKey(),

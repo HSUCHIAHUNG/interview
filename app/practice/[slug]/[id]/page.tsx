@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPracticeChallenge } from '@/lib/array-challenges'
 import { auth } from '@clerk/nextjs/server'
-import { getUserCompletedProblems } from '@/lib/db/queries'
+import { getUserCompletedProblems, getStarredProblemIds } from '@/lib/db/queries'
 import PracticeClient from './PracticeClient'
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
@@ -29,11 +29,13 @@ export default async function ProblemPage({ params }: Props) {
   const nextProblem = entry.problems[problemIndex + 1] ?? null
 
   const { userId } = await auth()
-  const completedIds = userId
-    ? await getUserCompletedProblems(userId, slug)
-    : new Set<string>()
+  const [completedIds, starredIds] = await Promise.all([
+    userId ? getUserCompletedProblems(userId, slug) : Promise.resolve(new Set<string>()),
+    userId ? getStarredProblemIds(userId, slug) : Promise.resolve(new Set<string>()),
+  ])
 
   const isCompleted = completedIds.has(id)
+  const isStarred = starredIds.has(id)
 
   return (
     <main className="min-h-screen bg-gray-950 px-4 py-8">
@@ -68,6 +70,7 @@ export default async function ProblemPage({ params }: Props) {
           topicSlug={slug}
           isLoggedIn={!!userId}
           initialCompleted={isCompleted}
+          initialStarred={isStarred}
           prevProblem={prevProblem ? { id: prevProblem.id, title: prevProblem.title } : null}
           nextProblem={nextProblem ? { id: nextProblem.id, title: nextProblem.title } : null}
         />

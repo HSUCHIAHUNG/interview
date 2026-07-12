@@ -1,6 +1,6 @@
 import { eq, sql, and, inArray, gte } from 'drizzle-orm'
 import { db } from './index'
-import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections, userWeeklyGoals, userQuestionLog } from './schema'
+import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections, userWeeklyGoals, userQuestionLog, userStarredQuestions, userStarredProblems } from './schema'
 import type { TopicMeta, Question } from '@/lib/topics'
 
 export type TopicCard = {
@@ -27,10 +27,19 @@ export async function getAllTopicsFromDB(): Promise<TopicCard[]> {
       subCategory: topics.subCategory,
       category: topics.category,
       difficulty: topics.difficulty,
+      topicOrder: topics.order,
       questionCount: sql<number>`count(${questions.id})::int`,
+      subCategoryOrder: sql<number>`min(coalesce(${themeSubCategories.order}, 999))`,
     })
     .from(topics)
     .leftJoin(questions, eq(topics.id, questions.topicId))
+    .leftJoin(
+      themeSubCategories,
+      and(
+        eq(themeSubCategories.theme, topics.theme),
+        eq(themeSubCategories.name, topics.subCategory!),
+      ),
+    )
     .groupBy(
       topics.id,
       topics.slug,
@@ -40,8 +49,13 @@ export async function getAllTopicsFromDB(): Promise<TopicCard[]> {
       topics.subCategory,
       topics.category,
       topics.difficulty,
+      topics.order,
     )
-    .orderBy(topics.slug)
+    .orderBy(
+      sql`min(coalesce(${themeSubCategories.order}, 999))`,
+      topics.order,
+      topics.slug,
+    )
 
   return rows.map(r => ({
     slug: r.slug,
@@ -472,4 +486,120 @@ export async function logAndCheckMilestone(
   }
 
   return { todayCount, weekCount, streak, milestone }
+}
+
+export async function getStarredQuestionIds(userId: string, topicSlug: string): Promise<Set<number>> {
+  const topicRow = await db.select({ id: topics.id }).from(topics).where(eq(topics.slug, topicSlug)).limit(1)
+  if (!topicRow[0]) return new Set()
+
+  const rows = await db
+    .select({ questionId: userStarredQuestions.questionId })
+    .from(userStarredQuestions)
+    .innerJoin(questions, eq(questions.id, userStarredQuestions.questionId))
+    .where(and(eq(userStarredQuestions.userId, userId), eq(questions.topicId, topicRow[0].id)))
+
+  return new Set(rows.map(r => r.questionId))
+}
+
+export type StarredQuestion = {
+  questionId: number
+  question: string
+  options: string[]
+  answer: number
+  explanation: string
+  topicSlug: string
+  topicTitle: string
+  theme: string
+  subCategory: string | null
+}
+
+export async function getStarredQuestions(userId: string): Promise<StarredQuestion[]> {
+  const rows = await db
+    .select({
+      questionId: questions.id,
+      question: questions.question,
+      options: questions.options,
+      answer: questions.answer,
+      explanation: questions.explanation,
+      topicSlug: topics.slug,
+      topicTitle: topics.title,
+      theme: topics.theme,
+      subCategory: topics.subCategory,
+    })
+    .from(userStarredQuestions)
+    .innerJoin(questions, eq(questions.id, userStarredQuestions.questionId))
+    .innerJoin(topics, eq(topics.id, questions.topicId))
+    .where(eq(userStarredQuestions.userId, userId))
+    .orderBy(topics.theme, topics.slug, questions.order)
+
+  return rows.map(r => ({
+    ...r,
+    options: (r.options ?? []) as string[],
+    answer: r.answer ?? 0,
+  }))
+}
+
+export async function toggleStarredQuestion(userId: string, questionId: number): Promise<boolean> {
+  const existing = await db
+    .select({ id: userStarredQuestions.id })
+    .from(userStarredQuestions)
+    .where(and(eq(userStarredQuestions.userId, userId), eq(userStarredQuestions.questionId, questionId)))
+    .limit(1)
+
+  if (existing.length > 0) {
+    await db.delete(userStarredQuestions).where(
+      and(eq(userStarredQuestions.userId, userId), eq(userStarredQuestions.questionId, questionId))
+    )
+    return false
+  } else {
+    await db.insert(userStarredQuestions).values({ userId, questionId })
+    return true
+  }
+}
+
+// ── Starred Problems (實作題) ──────────────────────────────────────────────
+
+export async function getStarredProblemIds(userId: string, topicSlug: string): Promise<Set<string>> {
+  const rows = await db
+    .select({ problemId: userStarredProblems.problemId })
+    .from(userStarredProblems)
+    .where(and(eq(userStarredProblems.userId, userId), eq(userStarredProblems.topicSlug, topicSlug)))
+  return new Set(rows.map(r => r.problemId))
+}
+
+export type StarredProblemRow = { topicSlug: string; problemId: string }
+
+export async function getStarredProblemRows(userId: string): Promise<StarredProblemRow[]> {
+  const rows = await db
+    .select({ topicSlug: userStarredProblems.topicSlug, problemId: userStarredProblems.problemId })
+    .from(userStarredProblems)
+    .where(eq(userStarredProblems.userId, userId))
+    .orderBy(userStarredProblems.topicSlug, userStarredProblems.problemId)
+  return rows
+}
+
+export async function toggleStarredProblem(userId: string, topicSlug: string, problemId: string): Promise<boolean> {
+  const existing = await db
+    .select({ id: userStarredProblems.id })
+    .from(userStarredProblems)
+    .where(and(
+      eq(userStarredProblems.userId, userId),
+      eq(userStarredProblems.topicSlug, topicSlug),
+      eq(userStarredProblems.problemId, problemId),
+    ))
+    .limit(1)
+
+  if (existing.length > 0) {
+    await db.delete(userStarredProblems).where(
+      and(
+        eq(userStarredProblems.userId, userId),
+        eq(userStarredProblems.topicSlug, topicSlug),
+        eq(userStarredProblems.problemId, problemId),
+      )
+    )
+    return false
+  } else {
+    await db.insert(userStarredProblems).values({ userId, topicSlug, problemId })
+    return true
+  }
 }
