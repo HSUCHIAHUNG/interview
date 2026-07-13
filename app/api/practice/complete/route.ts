@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { markProblemComplete } from '@/lib/db/queries'
 
 export async function POST(req: Request) {
@@ -13,5 +14,6 @@ export async function POST(req: Request) {
   }
 
   await markProblemComplete(userId, topicSlug, problemId)
+  revalidatePath(`/practice/${topicSlug}`)
   return NextResponse.json({ ok: true })
 }
