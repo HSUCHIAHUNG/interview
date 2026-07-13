@@ -34,3 +34,9 @@ button:disabled {
 #nprogress .peg {
   box-shadow: 0 0 10px #3b82f6, 0 0 5px #3b82f6 !important;
 }
+
+
+/* Hide scrollbar while keeping scroll functional */
+[style*='overflow-y: auto']::-webkit-scrollbar {
+  display: none;
+}

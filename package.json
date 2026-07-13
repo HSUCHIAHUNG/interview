@@ -18,6 +18,7 @@
     "@clerk/nextjs": "^7.5.11",
     "@google/generative-ai": "^0.24.1",
     "@neondatabase/serverless": "^1.1.0",
+    "@tanstack/react-virtual": "^3.14.6",
     "@types/nprogress": "^0.2.3",
     "@vercel/blob": "^2.5.0",
     "drizzle-orm": "^0.45.2",

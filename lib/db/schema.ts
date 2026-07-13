@@ -138,6 +138,16 @@ export const userNotes = pgTable('user_notes', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+export const userWeekNotes = pgTable('user_week_notes', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  weekStart: text('week_start').notNull(), // 'YYYY-MM-DD' (ISO Monday)
+  note: text('note').notNull().default(''),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (t) => [
+  unique('user_week_notes_uniq').on(t.userId, t.weekStart),
+])
+
 export type Topic = typeof topics.$inferSelect
 export type Question = typeof questions.$inferSelect
 export type UserAnswer = typeof userAnswers.$inferSelect

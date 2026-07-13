@@ -7,6 +7,8 @@ interface Summary {
   weekByTheme: Record<string, number>
   streak: number
   goalMap: Record<string, number>
+  weekStart: string
+  weekEnd: string
 }
 
 export default function DailyProgress() {
@@ -15,7 +17,7 @@ export default function DailyProgress() {
 
   useEffect(() => {
     const load = () => {
-      fetch('/api/progress/summary')
+      fetch('/api/progress/summary', { cache: 'no-store' })
         .then(r => { if (!r.ok) throw new Error(); return r.json() })
         .then((d: Summary) => setData(d))
         .catch(() => setError(true))
@@ -43,6 +45,12 @@ export default function DailyProgress() {
   }
 
   const themes = Object.keys(data.goalMap).filter(t => data.goalMap[t] > 0)
+
+  // Format "M/D" from YYYY-MM-DD string
+  const fmtDate = (s: string) => { const [, m, d] = s.split('-'); return `${+m}/${+d}` }
+  const weekRange = data.weekStart && data.weekEnd
+    ? `${fmtDate(data.weekStart)} – ${fmtDate(data.weekEnd)}`
+    : ''
 
   // No goals set — show a prompt
   if (themes.length === 0 && data.streak === 0) {
@@ -87,6 +95,7 @@ export default function DailyProgress() {
                     <span className="font-medium text-gray-300">{theme}</span>
                     <span className="text-gray-500">{weekDone}/{weekGoal} 本週</span>
                   </div>
+                  <div className="text-xs text-gray-700 mb-1">{weekRange}</div>
                   <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-blue-500 rounded-full transition-all duration-500"

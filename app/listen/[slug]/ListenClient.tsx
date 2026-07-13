@@ -29,14 +29,17 @@ export default function ListenClient({ slug, methodName, initialKeyPoints }: Pro
   const [playingIdx, setPlayingIdx] = useState<number | null>(null)
   const [playMode, setPlayMode] = useState<'once' | 'repeat' | 'loop'>('once')
   const [speed, setSpeed] = useState(1)
+  const [volume, setVolume] = useState(1)
   const [clearing, setClearing] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const playModeRef = useRef(playMode)
   const speedRef = useRef(speed)
+  const volumeRef = useRef(volume)
   const itemsRef = useRef(items)
   playModeRef.current = playMode
   speedRef.current = speed
+  volumeRef.current = volume
   itemsRef.current = items
 
   function setStateAt(i: number, s: AudioState) {
@@ -90,6 +93,7 @@ export default function ListenClient({ slug, methodName, initialKeyPoints }: Pro
       audio.onerror = () => { URL.revokeObjectURL(url); setStateAt(i, 'error'); setPlayingIdx(null) }
 
       audio.playbackRate = speedRef.current
+      audio.volume = volumeRef.current
       setStateAt(i, 'playing')
       await audio.play()
     } catch (e) {
@@ -107,6 +111,11 @@ export default function ListenClient({ slug, methodName, initialKeyPoints }: Pro
   function changeSpeed(s: number) {
     setSpeed(s)
     if (audioRef.current) audioRef.current.playbackRate = s
+  }
+
+  function changeVolume(v: number) {
+    setVolume(v)
+    if (audioRef.current) audioRef.current.volume = v
   }
 
   async function clearCache() {
@@ -292,21 +301,38 @@ export default function ListenClient({ slug, methodName, initialKeyPoints }: Pro
         </button>
       </div>
 
-      <div className="flex items-center gap-2 mb-6">
-        <span className="text-xs text-gray-500 shrink-0">播放速度</span>
-        {[0.75, 1, 1.25, 1.5, 2].map(s => (
-          <button
-            key={s}
-            onClick={() => changeSpeed(s)}
-            className={`text-xs px-2.5 py-1 rounded-lg border transition ${
-              speed === s
-                ? 'bg-blue-900/40 border-blue-700 text-blue-300'
-                : 'border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400'
-            }`}
-          >
-            {s}x
-          </button>
-        ))}
+      <div className="flex flex-col gap-2 mb-6">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 shrink-0 w-14">播放速度</span>
+          {[0.75, 1, 1.25, 1.5, 2].map(s => (
+            <button
+              key={s}
+              onClick={() => changeSpeed(s)}
+              className={`text-xs px-2.5 py-1 rounded-lg border transition ${
+                speed === s
+                  ? 'bg-blue-900/40 border-blue-700 text-blue-300'
+                  : 'border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400'
+              }`}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500 shrink-0 w-14">
+            {volume === 0 ? '🔇' : volume < 0.5 ? '🔉' : '🔊'} 音量
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={volume}
+            onChange={e => changeVolume(parseFloat(e.target.value))}
+            className="flex-1 accent-blue-500 max-w-48"
+          />
+          <span className="text-xs text-gray-500 w-8 text-right">{Math.round(volume * 100)}%</span>
+        </div>
       </div>
 
       <div className="space-y-3">

@@ -1,6 +1,6 @@
-import { eq, sql, and, inArray, gte } from 'drizzle-orm'
+import { eq, sql, and, inArray, gte, gt, asc } from 'drizzle-orm'
 import { db } from './index'
-import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections, userWeeklyGoals, userQuestionLog, userStarredQuestions, userStarredProblems } from './schema'
+import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections, userWeeklyGoals, userQuestionLog, userStarredQuestions, userStarredProblems, userWeekNotes } from './schema'
 import type { TopicMeta, Question } from '@/lib/topics'
 
 export type TopicCard = {
@@ -384,22 +384,27 @@ export type ProgressSummary = {
 }
 
 export async function getProgressSummary(userId: string): Promise<ProgressSummary> {
-  // Weekly logs joined with topics to get theme
-  const weekLogs = await db
-    .select({ theme: topics.theme, loggedAt: userQuestionLog.loggedAt })
+  // Use Drizzle query builder with SQL expressions so date comparisons happen entirely in the DB.
+  // date_trunc('week', ...) uses ISO weeks (Monday start), which matches our UI expectation.
+  const rows = await db
+    .select({
+      theme: topics.theme,
+      weekCount: sql<number>`count(*)::int`,
+      todayCount: sql<number>`count(*) filter (where ${userQuestionLog.loggedAt} >= current_date)::int`,
+    })
     .from(userQuestionLog)
     .innerJoin(topics, eq(userQuestionLog.topicSlug, topics.slug))
-    .where(and(eq(userQuestionLog.userId, userId), gte(userQuestionLog.loggedAt, startOfWeek())))
+    .where(and(
+      eq(userQuestionLog.userId, userId),
+      sql`${userQuestionLog.loggedAt} >= date_trunc('week', current_timestamp)`,
+    ))
+    .groupBy(topics.theme)
 
-  const todayStart = startOfDay()
   const todayByTheme: Record<string, number> = {}
   const weekByTheme: Record<string, number> = {}
-
-  for (const log of weekLogs) {
-    weekByTheme[log.theme] = (weekByTheme[log.theme] ?? 0) + 1
-    if (log.loggedAt >= todayStart) {
-      todayByTheme[log.theme] = (todayByTheme[log.theme] ?? 0) + 1
-    }
+  for (const row of rows) {
+    weekByTheme[row.theme] = row.weekCount
+    todayByTheme[row.theme] = row.todayCount
   }
 
   // Streak: distinct practice days (sort in JS to avoid SELECT DISTINCT + ORDER BY constraint)
@@ -513,9 +518,14 @@ export type StarredQuestion = {
   subCategory: string | null
 }
 
-export async function getStarredQuestions(userId: string): Promise<StarredQuestion[]> {
+export async function getStarredQuestions(
+  userId: string,
+  cursor?: number,
+  limit = 30,
+): Promise<{ items: StarredQuestion[]; nextCursor: number | null }> {
   const rows = await db
     .select({
+      starredId: userStarredQuestions.id,
       questionId: questions.id,
       question: questions.question,
       options: questions.options,
@@ -529,14 +539,31 @@ export async function getStarredQuestions(userId: string): Promise<StarredQuesti
     .from(userStarredQuestions)
     .innerJoin(questions, eq(questions.id, userStarredQuestions.questionId))
     .innerJoin(topics, eq(topics.id, questions.topicId))
-    .where(eq(userStarredQuestions.userId, userId))
-    .orderBy(topics.theme, topics.slug, questions.order)
+    .where(and(
+      eq(userStarredQuestions.userId, userId),
+      cursor ? gt(userStarredQuestions.id, cursor) : undefined,
+    ))
+    .orderBy(asc(userStarredQuestions.id))
+    .limit(limit + 1)
 
-  return rows.map(r => ({
-    ...r,
-    options: (r.options ?? []) as string[],
-    answer: r.answer ?? 0,
-  }))
+  const hasMore = rows.length > limit
+  const batch = hasMore ? rows.slice(0, limit) : rows
+  const nextCursor = hasMore ? batch[batch.length - 1].starredId : null
+
+  return {
+    items: batch.map(r => ({
+      questionId: r.questionId,
+      question: r.question,
+      options: (r.options ?? []) as string[],
+      answer: r.answer ?? 0,
+      explanation: r.explanation,
+      topicSlug: r.topicSlug,
+      topicTitle: r.topicTitle,
+      theme: r.theme,
+      subCategory: r.subCategory,
+    })),
+    nextCursor,
+  }
 }
 
 export async function toggleStarredQuestion(userId: string, questionId: number): Promise<boolean> {
@@ -569,13 +596,121 @@ export async function getStarredProblemIds(userId: string, topicSlug: string): P
 
 export type StarredProblemRow = { topicSlug: string; problemId: string }
 
-export async function getStarredProblemRows(userId: string): Promise<StarredProblemRow[]> {
+export async function getStarredProblemRows(
+  userId: string,
+  cursor?: number,
+  limit = 30,
+): Promise<{ items: StarredProblemRow[]; nextCursor: number | null }> {
   const rows = await db
-    .select({ topicSlug: userStarredProblems.topicSlug, problemId: userStarredProblems.problemId })
+    .select({
+      starredId: userStarredProblems.id,
+      topicSlug: userStarredProblems.topicSlug,
+      problemId: userStarredProblems.problemId,
+    })
     .from(userStarredProblems)
-    .where(eq(userStarredProblems.userId, userId))
-    .orderBy(userStarredProblems.topicSlug, userStarredProblems.problemId)
-  return rows
+    .where(and(
+      eq(userStarredProblems.userId, userId),
+      cursor ? gt(userStarredProblems.id, cursor) : undefined,
+    ))
+    .orderBy(asc(userStarredProblems.id))
+    .limit(limit + 1)
+
+  const hasMore = rows.length > limit
+  const batch = hasMore ? rows.slice(0, limit) : rows
+  const nextCursor = hasMore ? batch[batch.length - 1].starredId : null
+
+  return {
+    items: batch.map(r => ({ topicSlug: r.topicSlug, problemId: r.problemId })),
+    nextCursor,
+  }
+}
+
+// ── Weekly history ────────────────────────────────────────────────────────────
+
+export type WeekHistoryEntry = {
+  weekStart: string
+  weekEnd: string
+  themes: { theme: string; done: number; goal: number }[]
+  totalDone: number
+  note: string
+  isCurrentWeek: boolean
+}
+
+export async function getWeeklyHistory(userId: string): Promise<WeekHistoryEntry[]> {
+  const logRows = await db
+    .select({
+      weekStart: sql<string>`date_trunc('week', ${userQuestionLog.loggedAt})::date::text`,
+      theme: topics.theme,
+      doneCount: sql<number>`count(*)::int`,
+    })
+    .from(userQuestionLog)
+    .innerJoin(topics, eq(userQuestionLog.topicSlug, topics.slug))
+    .where(eq(userQuestionLog.userId, userId))
+    .groupBy(sql`date_trunc('week', ${userQuestionLog.loggedAt})`, topics.theme)
+    .orderBy(sql`date_trunc('week', ${userQuestionLog.loggedAt}) DESC`)
+
+  const goals = await getWeeklyGoals(userId)
+  const goalMap: Record<string, number> = {}
+  for (const g of goals) goalMap[g.theme] = g.weeklyGoal
+
+  const noteRows = await db
+    .select({ weekStart: userWeekNotes.weekStart, note: userWeekNotes.note })
+    .from(userWeekNotes)
+    .where(eq(userWeekNotes.userId, userId))
+  const noteMap: Record<string, string> = {}
+  for (const n of noteRows) noteMap[n.weekStart] = n.note
+
+  const now = new Date()
+  const mondayOffset = (now.getUTCDay() + 6) % 7
+  const currentMon = new Date(now)
+  currentMon.setUTCDate(now.getUTCDate() - mondayOffset)
+  currentMon.setUTCHours(0, 0, 0, 0)
+  const currentWeekStartStr = currentMon.toISOString().split('T')[0]
+
+  const weekMap: Record<string, Record<string, number>> = {}
+  for (const row of logRows) {
+    if (!weekMap[row.weekStart]) weekMap[row.weekStart] = {}
+    weekMap[row.weekStart][row.theme] = row.doneCount
+  }
+
+  // All themes that have a goal set — always shown per week even if done=0
+  const goalThemes = Object.keys(goalMap).filter(t => goalMap[t] > 0)
+
+  return Object.keys(weekMap)
+    .sort()
+    .reverse()
+    .map(weekStart => {
+      const weekEnd = new Date(weekStart)
+      weekEnd.setUTCDate(weekEnd.getUTCDate() + 6)
+      const themeData = weekMap[weekStart]
+
+      // Union of: themes with activity this week + all goal themes
+      const allThemeSet = new Set([...Object.keys(themeData), ...goalThemes])
+      const themes = [...allThemeSet].map(theme => ({
+        theme,
+        done: themeData[theme] ?? 0,
+        goal: goalMap[theme] ?? 0,
+      }))
+
+      return {
+        weekStart,
+        weekEnd: weekEnd.toISOString().split('T')[0],
+        themes,
+        totalDone: themes.reduce((s, t) => s + t.done, 0),
+        note: noteMap[weekStart] ?? '',
+        isCurrentWeek: weekStart === currentWeekStartStr,
+      }
+    })
+}
+
+export async function saveWeekNote(userId: string, weekStart: string, note: string): Promise<void> {
+  await db
+    .insert(userWeekNotes)
+    .values({ userId, weekStart, note })
+    .onConflictDoUpdate({
+      target: [userWeekNotes.userId, userWeekNotes.weekStart],
+      set: { note, updatedAt: new Date() },
+    })
 }
 
 export async function toggleStarredProblem(userId: string, topicSlug: string, problemId: string): Promise<boolean> {

@@ -8,6 +8,7 @@ import { getMethodChallenge } from '@/lib/array-challenges'
 import ThemeFilter from '@/app/components/ThemeFilter'
 import DailyProgress from '@/app/components/DailyProgress'
 import GoalButton from '@/app/components/GoalButton'
+import HistoryButton from '@/app/components/HistoryButton'
 import MemoButton from '@/app/components/MemoButton'
 
 export default async function HomePage() {
@@ -38,6 +39,7 @@ export default async function HomePage() {
         {/* Header */}
         <div className="flex justify-end items-center gap-3 mb-6">
           {userId && <MemoButton />}
+          {userId && <HistoryButton />}
           {userId && <GoalButton />}
           {userId && (
             <Link

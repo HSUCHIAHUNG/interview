@@ -1,21 +1,108 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import type { StarredQuestion } from '@/lib/db/queries'
-import type { StarredProblemItem } from './page'
+import type { StarredProblemItem } from './types'
 
 type Tab = 'quiz' | 'qa' | 'practice'
 
-interface Props {
-  initialQuestions: StarredQuestion[]
-  initialProblems: StarredProblemItem[]
+// ── Flat list types ───────────────────────────────────────────────────────────
+
+type QuestionFlatItem =
+  | { kind: 'header'; topicSlug: string; topicTitle: string; theme: string; count: number }
+  | { kind: 'card'; q: StarredQuestion; idx: number }
+
+type ProblemFlatItem =
+  | { kind: 'header'; topicSlug: string; topicTitle: string; count: number }
+  | { kind: 'card'; p: StarredProblemItem }
+
+function buildQuestionFlat(questions: StarredQuestion[]): QuestionFlatItem[] {
+  const grouped: Record<string, { topicTitle: string; theme: string; items: StarredQuestion[] }> = {}
+  for (const q of questions) {
+    if (!grouped[q.topicSlug]) grouped[q.topicSlug] = { topicTitle: q.topicTitle, theme: q.theme, items: [] }
+    grouped[q.topicSlug].items.push(q)
+  }
+  const flat: QuestionFlatItem[] = []
+  for (const [slug, g] of Object.entries(grouped)) {
+    flat.push({ kind: 'header', topicSlug: slug, topicTitle: g.topicTitle, theme: g.theme, count: g.items.length })
+    g.items.forEach((q, idx) => flat.push({ kind: 'card', q, idx }))
+  }
+  return flat
 }
 
-export default function StarredClient({ initialQuestions, initialProblems }: Props) {
+function buildProblemFlat(problems: StarredProblemItem[]): ProblemFlatItem[] {
+  const grouped: Record<string, { topicTitle: string; items: StarredProblemItem[] }> = {}
+  for (const p of problems) {
+    if (!grouped[p.topicSlug]) grouped[p.topicSlug] = { topicTitle: p.topicTitle, items: [] }
+    grouped[p.topicSlug].items.push(p)
+  }
+  const flat: ProblemFlatItem[] = []
+  for (const [slug, g] of Object.entries(grouped)) {
+    flat.push({ kind: 'header', topicSlug: slug, topicTitle: g.topicTitle, count: g.items.length })
+    g.items.forEach(p => flat.push({ kind: 'card', p }))
+  }
+  return flat
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function StarredClient() {
   const [tab, setTab] = useState<Tab>('quiz')
-  const [questions, setQuestions] = useState(initialQuestions)
-  const [problems, setProblems] = useState(initialProblems)
+
+  const [questions, setQuestions] = useState<StarredQuestion[]>([])
+  const [qCursor, setQCursor] = useState<number | null>(null)
+  const [qHasMore, setQHasMore] = useState(true)
+  const [qLoading, setQLoading] = useState(false)
+  const qFetched = useRef(false)
+
+  const [problems, setProblems] = useState<StarredProblemItem[]>([])
+  const [pCursor, setPCursor] = useState<number | null>(null)
+  const [pHasMore, setPHasMore] = useState(true)
+  const [pLoading, setPLoading] = useState(false)
+  const pFetched = useRef(false)
+
+  async function loadQuestions(cursor: number | null = null) {
+    if (qLoading) return
+    setQLoading(true)
+    try {
+      const url = `/api/starred/list?type=questions${cursor != null ? `&cursor=${cursor}` : ''}`
+      const res = await fetch(url)
+      const data = await res.json()
+      const batch: StarredQuestion[] = data.questions ?? []
+      setQuestions(prev => cursor == null ? batch : [...prev, ...batch])
+      setQCursor(data.nextCursor)
+      setQHasMore(data.nextCursor !== null)
+    } finally {
+      setQLoading(false)
+    }
+  }
+
+  async function loadProblems(cursor: number | null = null) {
+    if (pLoading) return
+    setPLoading(true)
+    try {
+      const url = `/api/starred/list?type=problems${cursor != null ? `&cursor=${cursor}` : ''}`
+      const res = await fetch(url)
+      const data = await res.json()
+      const batch: StarredProblemItem[] = data.problems ?? []
+      setProblems(prev => cursor == null ? batch : [...prev, ...batch])
+      setPCursor(data.nextCursor)
+      setPHasMore(data.nextCursor !== null)
+    } finally {
+      setPLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!qFetched.current) { qFetched.current = true; loadQuestions() }
+    if (!pFetched.current) { pFetched.current = true; loadProblems() }
+  }, [])
+
+  function handleTabChange(t: Tab) {
+    setTab(t)
+  }
 
   async function unstarQuestion(questionId: number) {
     await fetch('/api/starred', {
@@ -44,50 +131,76 @@ export default function StarredClient({ initialQuestions, initialProblems }: Pro
     { key: 'practice', label: '實作題', count: problems.length },
   ]
 
+  const quizFlat = buildQuestionFlat(quizQuestions)
+  const qaFlat = buildQuestionFlat(qaQuestions)
+  const problemFlat = buildProblemFlat(problems)
+
   return (
     <div>
-      {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-gray-900 border border-gray-800 rounded-xl p-1">
         {tabs.map(t => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => handleTabChange(t.key)}
             className={`flex-1 text-sm font-medium py-2 rounded-lg transition flex items-center justify-center gap-1.5 ${
-              tab === t.key
-                ? 'bg-gray-700 text-white'
-                : 'text-gray-500 hover:text-gray-300'
+              tab === t.key ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'
             }`}
           >
             {t.label}
             <span className={`text-xs px-1.5 py-0.5 rounded-full ${
               tab === t.key ? 'bg-gray-600 text-gray-200' : 'bg-gray-800 text-gray-600'
-            }`}>
-              {t.count}
-            </span>
+            }`}>{t.count}</span>
           </button>
         ))}
       </div>
 
-      {/* 選擇題 */}
       {tab === 'quiz' && (
-        quizQuestions.length === 0
-          ? <EmptyState text="還沒有標記選擇題" hint="在選擇題練習中點擊 ☆ 加入" />
-          : <QuestionList items={quizQuestions} onUnstar={unstarQuestion} showOptions />
+        qLoading && quizFlat.length === 0 ? <LoadingState /> :
+        quizFlat.length === 0 ? <EmptyState text="還沒有標記選擇題" hint="在選擇題練習中點擊 ☆ 加入" /> :
+        <VirtualQuestionList
+          key="quiz"
+          flatItems={quizFlat}
+          onUnstar={unstarQuestion}
+          showOptions
+          hasMore={qHasMore}
+          loadingMore={qLoading}
+          onLoadMore={() => loadQuestions(qCursor)}
+        />
       )}
-
-      {/* 問答練習 */}
       {tab === 'qa' && (
-        qaQuestions.length === 0
-          ? <EmptyState text="還沒有標記問答練習題" hint="在問答練習中點擊 ☆ 加入" />
-          : <QuestionList items={qaQuestions} onUnstar={unstarQuestion} showOptions={false} />
+        qLoading && qaFlat.length === 0 ? <LoadingState /> :
+        qaFlat.length === 0 ? <EmptyState text="還沒有標記問答練習題" hint="在問答練習中點擊 ☆ 加入" /> :
+        <VirtualQuestionList
+          key="qa"
+          flatItems={qaFlat}
+          onUnstar={unstarQuestion}
+          showOptions={false}
+          hasMore={qHasMore}
+          loadingMore={qLoading}
+          onLoadMore={() => loadQuestions(qCursor)}
+        />
       )}
-
-      {/* 實作題 */}
       {tab === 'practice' && (
-        problems.length === 0
-          ? <EmptyState text="還沒有標記實作題" hint="在實作練習中點擊 ☆ 加入" />
-          : <ProblemList items={problems} onUnstar={unstarProblem} />
+        pLoading && problemFlat.length === 0 ? <LoadingState /> :
+        problemFlat.length === 0 ? <EmptyState text="還沒有標記實作題" hint="在實作練習中點擊 ☆ 加入" /> :
+        <VirtualProblemList
+          flatItems={problemFlat}
+          onUnstar={unstarProblem}
+          hasMore={pHasMore}
+          loadingMore={pLoading}
+          onLoadMore={() => loadProblems(pCursor)}
+        />
       )}
+    </div>
+  )
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+
+function LoadingState() {
+  return (
+    <div className="space-y-2 animate-pulse">
+      {[1, 2, 3].map(i => <div key={i} className="h-16 bg-gray-900 border border-gray-800 rounded-xl" />)}
     </div>
   )
 }
@@ -102,40 +215,153 @@ function EmptyState({ text, hint }: { text: string; hint: string }) {
   )
 }
 
-// ── 選擇題 / 問答練習 list ─────────────────────────────────────────────────
+// ── Virtual question list (window scroll) ────────────────────────────────────
 
-function QuestionList({ items, onUnstar, showOptions }: {
-  items: StarredQuestion[]
+function VirtualQuestionList({ flatItems, onUnstar, showOptions, hasMore, loadingMore, onLoadMore }: {
+  flatItems: QuestionFlatItem[]
   onUnstar: (id: number) => void
   showOptions: boolean
+  hasMore: boolean
+  loadingMore: boolean
+  onLoadMore: () => void
 }) {
-  const grouped = items.reduce<Record<string, { topicTitle: string; theme: string; items: StarredQuestion[] }>>(
-    (acc, q) => {
-      if (!acc[q.topicSlug]) acc[q.topicSlug] = { topicTitle: q.topicTitle, theme: q.theme, items: [] }
-      acc[q.topicSlug].items.push(q)
-      return acc
-    }, {}
-  )
+  const listRef = useRef<HTMLDivElement>(null)
+  const loadingMoreRef = useRef(false)
+
+  const virtualizer = useWindowVirtualizer({
+    count: flatItems.length,
+    estimateSize: (i) => flatItems[i].kind === 'header' ? 48 : 80,
+    scrollMargin: listRef.current?.offsetTop ?? 0,
+    overscan: 4,
+  })
+
+  const virtualItems = virtualizer.getVirtualItems()
+  useEffect(() => {
+    if (!virtualItems.length || !hasMore || loadingMore || loadingMoreRef.current) return
+    const lastVisible = virtualItems[virtualItems.length - 1]
+    if (lastVisible.index >= flatItems.length - 5) {
+      loadingMoreRef.current = true
+      onLoadMore()
+    }
+  }, [virtualItems, flatItems.length, hasMore, loadingMore])
+
+  useEffect(() => { loadingMoreRef.current = false }, [loadingMore])
 
   return (
-    <div className="space-y-8">
-      {Object.entries(grouped).map(([slug, group]) => (
-        <section key={slug}>
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-sm font-semibold text-gray-300">{group.topicTitle}</h2>
-            <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded-full">{group.theme}</span>
-            <span className="text-xs text-gray-600">{group.items.length} 題</span>
-          </div>
-          <div className="space-y-2">
-            {group.items.map((q, idx) => (
-              <QuestionCard key={q.questionId} q={q} idx={idx} onUnstar={onUnstar} showOptions={showOptions} />
-            ))}
-          </div>
-        </section>
-      ))}
+    <div ref={listRef}>
+      <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+        {virtualItems.map(vRow => {
+          const item = flatItems[vRow.index]
+          return (
+            <div
+              key={vRow.key}
+              data-index={vRow.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${vRow.start - virtualizer.options.scrollMargin}px)`,
+                paddingBottom: item.kind === 'card' ? 8 : 0,
+              }}
+            >
+              {item.kind === 'header' ? (
+                <div className="flex items-center gap-2 pt-4 pb-2">
+                  <h2 className="text-sm font-semibold text-gray-300">{item.topicTitle}</h2>
+                  <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded-full">{item.theme}</span>
+                  <span className="text-xs text-gray-600">{item.count} 題</span>
+                </div>
+              ) : (
+                <QuestionCard q={item.q} idx={item.idx} onUnstar={onUnstar} showOptions={showOptions} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {loadingMore && (
+        <div className="text-center py-3 text-xs text-gray-600 animate-pulse">載入中...</div>
+      )}
+      {!hasMore && flatItems.length > 0 && (
+        <div className="text-center py-3 text-xs text-gray-700">已顯示全部 {flatItems.filter(i => i.kind === 'card').length} 題</div>
+      )}
     </div>
   )
 }
+
+// ── Virtual problem list (window scroll) ─────────────────────────────────────
+
+function VirtualProblemList({ flatItems, onUnstar, hasMore, loadingMore, onLoadMore }: {
+  flatItems: ProblemFlatItem[]
+  onUnstar: (topicSlug: string, problemId: string) => void
+  hasMore: boolean
+  loadingMore: boolean
+  onLoadMore: () => void
+}) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const loadingMoreRef = useRef(false)
+
+  const virtualizer = useWindowVirtualizer({
+    count: flatItems.length,
+    estimateSize: (i) => flatItems[i].kind === 'header' ? 48 : 100,
+    scrollMargin: listRef.current?.offsetTop ?? 0,
+    overscan: 4,
+  })
+
+  const virtualItems = virtualizer.getVirtualItems()
+  useEffect(() => {
+    if (!virtualItems.length || !hasMore || loadingMore || loadingMoreRef.current) return
+    const lastVisible = virtualItems[virtualItems.length - 1]
+    if (lastVisible.index >= flatItems.length - 5) {
+      loadingMoreRef.current = true
+      onLoadMore()
+    }
+  }, [virtualItems, flatItems.length, hasMore, loadingMore])
+
+  useEffect(() => { loadingMoreRef.current = false }, [loadingMore])
+
+  return (
+    <div ref={listRef}>
+      <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+        {virtualItems.map(vRow => {
+          const item = flatItems[vRow.index]
+          return (
+            <div
+              key={vRow.key}
+              data-index={vRow.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${vRow.start - virtualizer.options.scrollMargin}px)`,
+                paddingBottom: item.kind === 'card' ? 8 : 0,
+              }}
+            >
+              {item.kind === 'header' ? (
+                <div className="flex items-center gap-2 pt-4 pb-2">
+                  <h2 className="text-sm font-semibold text-gray-300">{item.topicTitle}</h2>
+                  <span className="text-xs text-gray-600">{item.count} 題</span>
+                </div>
+              ) : (
+                <ProblemCard p={item.p} onUnstar={onUnstar} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {loadingMore && (
+        <div className="text-center py-3 text-xs text-gray-600 animate-pulse">載入中...</div>
+      )}
+      {!hasMore && flatItems.length > 0 && (
+        <div className="text-center py-3 text-xs text-gray-700">已顯示全部 {flatItems.filter(i => i.kind === 'card').length} 題</div>
+      )}
+    </div>
+  )
+}
+
+// ── Question card ─────────────────────────────────────────────────────────────
 
 function QuestionCard({ q, idx, onUnstar, showOptions }: {
   q: StarredQuestion; idx: number
@@ -166,20 +392,15 @@ function QuestionCard({ q, idx, onUnstar, showOptions }: {
       <div className="flex items-start gap-3 p-4">
         <span className="shrink-0 text-xs font-bold text-gray-600 mt-0.5 w-5">{idx + 1}.</span>
         <p className="flex-1 text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{q.question}</p>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleUnstar}
-            disabled={unstarring}
-            title="取消必考題"
-            className="text-yellow-400 hover:text-gray-500 transition disabled:opacity-40 text-base"
-          >
-            ★
-          </button>
-        </div>
+        <button
+          onClick={handleUnstar}
+          disabled={unstarring}
+          title="取消必考題"
+          className="shrink-0 text-yellow-400 hover:text-gray-500 transition disabled:opacity-40 text-base"
+        >★</button>
       </div>
 
       <div className="border-t border-gray-800 px-4 pb-4 pt-3 space-y-3">
-        {/* 選擇題: clickable options */}
         {showOptions && q.options && q.options.length > 0 && (
           <div className="space-y-1.5">
             {q.options.map((opt, i) => {
@@ -206,7 +427,6 @@ function QuestionCard({ q, idx, onUnstar, showOptions }: {
           </div>
         )}
 
-        {/* 問答練習: textarea + reveal button */}
         {!showOptions && (
           <>
             <textarea
@@ -228,7 +448,6 @@ function QuestionCard({ q, idx, onUnstar, showOptions }: {
           </>
         )}
 
-        {/* Explanation (shown after answering) */}
         {answered && (
           <>
             {showOptions && (
@@ -242,10 +461,7 @@ function QuestionCard({ q, idx, onUnstar, showOptions }: {
               </p>
               <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{q.explanation}</p>
             </div>
-            <button
-              onClick={reset}
-              className="text-xs text-gray-600 hover:text-gray-400 transition"
-            >
+            <button onClick={reset} className="text-xs text-gray-600 hover:text-gray-400 transition">
               重新作答
             </button>
           </>
@@ -255,38 +471,7 @@ function QuestionCard({ q, idx, onUnstar, showOptions }: {
   )
 }
 
-// ── 實作題 list ───────────────────────────────────────────────────────────
-
-function ProblemList({ items, onUnstar }: {
-  items: StarredProblemItem[]
-  onUnstar: (topicSlug: string, problemId: string) => void
-}) {
-  const grouped = items.reduce<Record<string, { topicTitle: string; items: StarredProblemItem[] }>>(
-    (acc, p) => {
-      if (!acc[p.topicSlug]) acc[p.topicSlug] = { topicTitle: p.topicTitle, items: [] }
-      acc[p.topicSlug].items.push(p)
-      return acc
-    }, {}
-  )
-
-  return (
-    <div className="space-y-8">
-      {Object.entries(grouped).map(([slug, group]) => (
-        <section key={slug}>
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-sm font-semibold text-gray-300">{group.topicTitle}</h2>
-            <span className="text-xs text-gray-600">{group.items.length} 題</span>
-          </div>
-          <div className="space-y-2">
-            {group.items.map(p => (
-              <ProblemCard key={`${p.topicSlug}-${p.problemId}`} p={p} onUnstar={onUnstar} />
-            ))}
-          </div>
-        </section>
-      ))}
-    </div>
-  )
-}
+// ── Problem card ──────────────────────────────────────────────────────────────
 
 const DIFFICULTY_COLOR = {
   easy: 'text-green-400 bg-green-900/30 border-green-800',
@@ -297,11 +482,6 @@ const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
 
 function ProblemCard({ p, onUnstar }: { p: StarredProblemItem; onUnstar: (s: string, id: string) => void }) {
   const [unstarring, setUnstarring] = useState(false)
-
-  async function handleUnstar() {
-    setUnstarring(true)
-    await onUnstar(p.topicSlug, p.problemId)
-  }
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-start gap-4">
@@ -322,13 +502,11 @@ function ProblemCard({ p, onUnstar }: { p: StarredProblemItem; onUnstar: (s: str
           前往練習
         </Link>
         <button
-          onClick={handleUnstar}
+          onClick={async () => { setUnstarring(true); await onUnstar(p.topicSlug, p.problemId) }}
           disabled={unstarring}
           title="取消必考題"
           className="text-yellow-400 hover:text-gray-500 transition disabled:opacity-40 text-xl"
-        >
-          ★
-        </button>
+        >★</button>
       </div>
     </div>
   )
