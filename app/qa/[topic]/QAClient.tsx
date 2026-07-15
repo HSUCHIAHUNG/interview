@@ -15,6 +15,8 @@ interface Props {
   onBack?: () => void;
   isLoggedIn?: boolean;
   initialStarred?: number[];
+  backHref?: string;
+  backLabel?: string;
 }
 
 type Phase = "answer" | "feedback" | "result";
@@ -33,6 +35,8 @@ export default function QAClient({
   onBack,
   isLoggedIn,
   initialStarred = [],
+  backHref = '/',
+  backLabel = '首頁',
 }: Props) {
   const resolvedAnswers: (string | null)[] =
     initialAnswers ?? Array(questions.length).fill(null);
@@ -488,10 +492,10 @@ export default function QAClient({
               </button>
             ) : (
               <Link
-                href="/"
+                href={backHref}
                 className="border border-gray-700 hover:bg-gray-800 text-gray-300 font-semibold px-6 py-2.5 rounded-xl transition"
               >
-                回首頁
+                ← {backLabel}
               </Link>
             )}
           </div>
@@ -524,8 +528,8 @@ export default function QAClient({
               ← 回選題
             </button>
           ) : (
-            <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition">
-              ← 回首頁
+            <Link href={backHref} className="text-sm text-gray-500 hover:text-gray-300 transition">
+              ← {backLabel}
             </Link>
           )
         ) : (

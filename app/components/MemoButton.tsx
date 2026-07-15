@@ -9,7 +9,7 @@ export default function MemoButton() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-sm font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 px-3 py-1.5 rounded-lg transition"
+        className="shrink-0 flex items-center gap-1 text-xs font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 px-2.5 py-1 rounded-lg transition"
       >
         📝 筆記
       </button>

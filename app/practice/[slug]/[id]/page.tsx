@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPracticeChallenge } from '@/lib/array-challenges'
 import { auth } from '@clerk/nextjs/server'
-import { getUserCompletedProblems, getStarredProblemIds } from '@/lib/db/queries'
+import { getUserCompletedProblems, getStarredProblemIds, getTopicNavInfo } from '@/lib/db/queries'
 import PracticeClient from './PracticeClient'
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
@@ -29,10 +29,16 @@ export default async function ProblemPage({ params }: Props) {
   const nextProblem = entry.problems[problemIndex + 1] ?? null
 
   const { userId } = await auth()
-  const [completedIds, starredIds] = await Promise.all([
+  const [completedIds, starredIds, navInfo] = await Promise.all([
     userId ? getUserCompletedProblems(userId, slug) : Promise.resolve(new Set<string>()),
     userId ? getStarredProblemIds(userId, slug) : Promise.resolve(new Set<string>()),
+    getTopicNavInfo(slug),
   ])
+
+  const backHref = navInfo
+    ? `/?theme=${encodeURIComponent(navInfo.theme)}${navInfo.subCategory ? `&sub=${encodeURIComponent(navInfo.subCategory)}` : ''}`
+    : '/'
+  const backLabel = navInfo?.subCategory ?? navInfo?.theme ?? '首頁'
 
   const isCompleted = completedIds.has(id)
   const isStarred = starredIds.has(id)
@@ -42,7 +48,7 @@ export default async function ProblemPage({ params }: Props) {
       <div className="max-w-6xl mx-auto">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-6 text-sm flex-wrap">
-          <Link href="/" className="text-gray-500 hover:text-gray-300 transition">首頁</Link>
+          <Link href={backHref} className="text-gray-500 hover:text-gray-300 transition">{backLabel}</Link>
           <span className="text-gray-700">/</span>
           <Link href={`/practice/${slug}`} className="text-gray-500 hover:text-gray-300 transition font-mono">
             {entry.methodName}

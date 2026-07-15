@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPracticeChallenge } from '@/lib/array-challenges'
 import { auth } from '@clerk/nextjs/server'
-import { getUserCompletedProblems } from '@/lib/db/queries'
+import { getUserCompletedProblems, getTopicNavInfo } from '@/lib/db/queries'
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
 const DIFFICULTY_COLOR = {
@@ -21,9 +21,15 @@ export default async function PracticeListPage({ params }: Props) {
   if (!entry) notFound()
 
   const { userId } = await auth()
-  const completedIds = userId
-    ? await getUserCompletedProblems(userId, slug)
-    : new Set<string>()
+  const [completedIds, navInfo] = await Promise.all([
+    userId ? getUserCompletedProblems(userId, slug) : Promise.resolve(new Set<string>()),
+    getTopicNavInfo(slug),
+  ])
+
+  const backHref = navInfo
+    ? `/?theme=${encodeURIComponent(navInfo.theme)}${navInfo.subCategory ? `&sub=${encodeURIComponent(navInfo.subCategory)}` : ''}`
+    : '/'
+  const backLabel = navInfo?.subCategory ?? navInfo?.theme ?? '首頁'
 
   const completedCount = entry.problems.filter(p => completedIds.has(p.id)).length
   const total = entry.problems.length
@@ -33,7 +39,7 @@ export default async function PracticeListPage({ params }: Props) {
       <div className="max-w-3xl mx-auto">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-6 text-sm">
-          <Link href="/" className="text-gray-500 hover:text-gray-300 transition">首頁</Link>
+          <Link href={backHref} className="text-gray-500 hover:text-gray-300 transition">{backLabel}</Link>
           <span className="text-gray-700">/</span>
           <span className="text-gray-500">{entry.subCategory}</span>
           <span className="text-gray-700">/</span>

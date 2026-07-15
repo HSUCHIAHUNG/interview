@@ -1,44 +1,60 @@
-import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { auth } from '@clerk/nextjs/server'
-import { getTopicFromDB, getTopicSlugsFromDB, getNotesBySlug } from '@/lib/db/queries'
-import { hasPracticeChallenge } from '@/lib/array-challenges'
-import NotesClient from './NotesClient'
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
+import {
+  getTopicFromDB,
+  getTopicSlugsFromDB,
+  getNotesBySlug,
+  getTopicNavInfo,
+} from "@/lib/db/queries";
+import { hasPracticeChallenge } from "@/lib/array-challenges";
+import NotesClient from "./NotesClient";
 
 export async function generateStaticParams() {
-  const slugs = await getTopicSlugsFromDB()
-  return slugs.map(slug => ({ topic: slug }))
+  const slugs = await getTopicSlugsFromDB();
+  return slugs.map((slug) => ({ topic: slug }));
 }
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 export default async function NotesPage({
   params,
 }: {
-  params: Promise<{ topic: string }>
+  params: Promise<{ topic: string }>;
 }) {
-  const { topic } = await params
-  const [data, sections, { userId }] = await Promise.all([
+  const { topic } = await params;
+  const [data, sections, { userId }, navInfo] = await Promise.all([
     getTopicFromDB(topic),
     getNotesBySlug(topic),
     auth(),
-  ])
+    getTopicNavInfo(topic),
+  ]);
 
-  if (!data) notFound()
-  if (sections.length === 0 && !hasPracticeChallenge(topic)) notFound()
+  if (!data) notFound();
+  if (sections.length === 0 && !hasPracticeChallenge(topic)) notFound();
 
-  const isPractice = hasPracticeChallenge(topic)
+  const isPractice = hasPracticeChallenge(topic);
+
+  const backHref = navInfo
+    ? `/?theme=${encodeURIComponent(navInfo.theme)}${navInfo.subCategory ? `&sub=${encodeURIComponent(navInfo.subCategory)}` : ''}`
+    : '/'
+  const backLabel = navInfo?.subCategory ?? navInfo?.theme ?? '首頁'
 
   return (
     <main className="min-h-screen bg-gray-950 px-6 py-12">
       <div className="max-w-2xl mx-auto">
-        <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition">
-          ← 回首頁
+        <Link
+          href={backHref}
+          className="text-sm text-gray-500 hover:text-gray-300 transition"
+        >
+          ← {backLabel}
         </Link>
 
         <div className="mt-6 mb-8 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-100">{data.meta.title}</h1>
+            <h1 className="text-3xl font-bold text-gray-100">
+              {data.meta.title}
+            </h1>
             <p className="text-gray-500 mt-2 text-sm">
               {data.meta.category} · {data.meta.description}
             </p>
@@ -69,13 +85,13 @@ export default async function NotesPage({
             </Link>
           )}
           <Link
-            href="/"
+            href={backHref}
             className="flex-1 text-center bg-gray-800 border border-gray-700 hover:bg-gray-700 text-gray-200 text-sm font-semibold py-3 rounded-xl transition"
           >
-            回首頁
+            ← {backLabel}
           </Link>
         </div>
       </div>
     </main>
-  )
+  );
 }

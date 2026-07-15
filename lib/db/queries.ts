@@ -294,6 +294,15 @@ export async function getTopicIdBySlug(slug: string): Promise<number | null> {
   return row?.id ?? null
 }
 
+export async function getTopicNavInfo(slug: string): Promise<{ theme: string; subCategory: string | null } | null> {
+  const [row] = await db
+    .select({ theme: topics.theme, subCategory: topics.subCategory })
+    .from(topics)
+    .where(eq(topics.slug, slug))
+    .limit(1)
+  return row ?? null
+}
+
 export async function getMaxQuestionOrder(topicId: number): Promise<number> {
   const [row] = await db.select({ max: sql<number>`coalesce(max("order"), -1)` }).from(questions).where(eq(questions.topicId, topicId))
   return row?.max ?? -1

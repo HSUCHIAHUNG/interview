@@ -17,6 +17,8 @@ interface Props {
   onBack?: () => void;
   isLoggedIn?: boolean;
   initialStarred?: number[];
+  backHref?: string;
+  backLabel?: string;
 }
 
 type Phase = "quiz" | "result";
@@ -38,6 +40,8 @@ export default function QuizClient({
   onBack,
   isLoggedIn,
   initialStarred = [],
+  backHref = '/',
+  backLabel = '首頁',
 }: Props) {
   const router = useRouter();
 
@@ -449,10 +453,10 @@ export default function QuizClient({
               </button>
             ) : (
               <Link
-                href="/"
+                href={backHref}
                 className="border border-gray-700 hover:bg-gray-800 text-gray-300 font-semibold px-6 py-2.5 rounded-xl transition"
               >
-                {mode === "random" ? "回首頁" : "選其他主題"}
+                ← {mode === "random" ? "首頁" : backLabel}
               </Link>
             )}
           </div>
@@ -485,8 +489,8 @@ export default function QuizClient({
               ← 回選題
             </button>
           ) : (
-            <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition">
-              ← 回首頁
+            <Link href={backHref} className="text-sm text-gray-500 hover:text-gray-300 transition">
+              ← {backLabel}
             </Link>
           )
         ) : (

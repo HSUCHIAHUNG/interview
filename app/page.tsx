@@ -1,71 +1,62 @@
-import Link from 'next/link'
-import { Suspense } from 'react'
-import { UserButton } from '@clerk/nextjs'
-import { auth } from '@clerk/nextjs/server'
-import { getAllTopicsFromDB, getUserCompletedTopics, getSubCategoriesByTheme, getUserPracticeProgress, getSlugsWithNotes } from '@/lib/db/queries'
-import { hasDemoPage, hasPracticePage } from '@/lib/topics'
-import { getMethodChallenge } from '@/lib/array-challenges'
-import ThemeFilter from '@/app/components/ThemeFilter'
-import DailyProgress from '@/app/components/DailyProgress'
-import GoalButton from '@/app/components/GoalButton'
-import HistoryButton from '@/app/components/HistoryButton'
-import MemoButton from '@/app/components/MemoButton'
+import Link from "next/link";
+import { Suspense } from "react";
+
+import { auth } from "@clerk/nextjs/server";
+import {
+  getAllTopicsFromDB,
+  getUserCompletedTopics,
+  getSubCategoriesByTheme,
+  getUserPracticeProgress,
+  getSlugsWithNotes,
+} from "@/lib/db/queries";
+import { hasDemoPage, hasPracticePage } from "@/lib/topics";
+import { getMethodChallenge } from "@/lib/array-challenges";
+import ThemeFilter from "@/app/components/ThemeFilter";
+import DailyProgress from "@/app/components/DailyProgress";
+import HeaderMenu from "@/app/components/HeaderMenu";
 
 export default async function HomePage() {
-  const { userId } = await auth()
-  const [topics, slugsWithNotes] = await Promise.all([getAllTopicsFromDB(), getSlugsWithNotes()])
-  const totalQuestions = topics.reduce((acc, t) => acc + t.questionCount, 0)
+  const { userId } = await auth();
+  const [topics, slugsWithNotes] = await Promise.all([
+    getAllTopicsFromDB(),
+    getSlugsWithNotes(),
+  ]);
+  const totalQuestions = topics.reduce((acc, t) => acc + t.questionCount, 0);
   const completedSlugs = userId
     ? await getUserCompletedTopics(userId)
-    : new Set<string>()
+    : new Set<string>();
 
   const practiceProgressMap = userId
     ? await getUserPracticeProgress(userId)
-    : new Map<string, number>()
+    : new Map<string, number>();
 
-  const themes = [...new Set(topics.map(t => t.theme))].sort()
+  const themes = [...new Set(topics.map((t) => t.theme))].sort();
 
   // Fetch subcategories for each theme from DB
-  const subCategoriesByTheme: Record<string, string[]> = {}
+  const subCategoriesByTheme: Record<string, string[]> = {};
   await Promise.all(
-    themes.map(async theme => {
-      subCategoriesByTheme[theme] = await getSubCategoriesByTheme(theme)
+    themes.map(async (theme) => {
+      subCategoriesByTheme[theme] = await getSubCategoriesByTheme(theme);
     })
-  )
+  );
 
   return (
-    <main className="min-h-screen bg-gray-950 px-6 py-12">
+    <main className="min-h-screen bg-gray-950 px-6 py-4 ">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex justify-end items-center gap-3 mb-6">
-          {userId && <MemoButton />}
-          {userId && <HistoryButton />}
-          {userId && <GoalButton />}
-          {userId && (
-            <Link
-              href="/starred"
-              className="flex items-center gap-1.5 text-sm font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 px-3 py-1.5 rounded-lg transition"
-            >
-              ⭐ 必考題
-            </Link>
-          )}
-          {userId ? (
-            <UserButton />
-          ) : (
-            <Link
-              href="/sign-in"
-              className="text-sm text-gray-400 hover:text-gray-200 border border-gray-700 hover:border-gray-500 px-4 py-1.5 rounded-lg transition"
-            >
-              登入
-            </Link>
-          )}
-        </div>
+        <HeaderMenu isLoggedIn={!!userId} />
 
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-100 mb-3">前端技術複習</h1>
+          <h1 className="text-4xl font-bold text-gray-100 mb-3">
+            前端技術複習
+          </h1>
           <p className="text-gray-500 text-lg">
-            共 <span className="font-semibold text-gray-300">{topics.length}</span> 個技術主題 ·{' '}
-            <span className="font-semibold text-gray-300">{totalQuestions}</span>{' '}
+            共{" "}
+            <span className="font-semibold text-gray-300">{topics.length}</span>{" "}
+            個技術主題 ·{" "}
+            <span className="font-semibold text-gray-300">
+              {totalQuestions}
+            </span>{" "}
             道練習題
           </p>
         </div>
@@ -94,7 +85,7 @@ export default async function HomePage() {
           <ThemeFilter
             themes={themes}
             subCategoriesByTheme={subCategoriesByTheme}
-            topics={topics.map(topic => ({
+            topics={topics.map((topic) => ({
               slug: topic.slug,
               meta: topic.meta,
               questionCount: topic.questionCount,
@@ -108,7 +99,8 @@ export default async function HomePage() {
               practiceProgress: hasPracticePage(topic.slug)
                 ? {
                     completed: practiceProgressMap.get(topic.slug) ?? 0,
-                    total: getMethodChallenge(topic.slug)?.problems?.length ?? 5,
+                    total:
+                      getMethodChallenge(topic.slug)?.problems?.length ?? 5,
                   }
                 : undefined,
             }))}
@@ -120,5 +112,5 @@ export default async function HomePage() {
         )}
       </div>
     </main>
-  )
+  );
 }
