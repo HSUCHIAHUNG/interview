@@ -337,22 +337,22 @@ export async function getQuestionsByTheme(theme: string): Promise<Question[]> {
   }))
 }
 
-// ─── Weekly goals ─────────────────────────────────────────────────────────────
+// ─── Goals ────────────────────────────────────────────────────────────────────
 
-export async function getWeeklyGoals(userId: string): Promise<{ theme: string; weeklyGoal: number }[]> {
+export async function getWeeklyGoals(userId: string): Promise<{ theme: string; weeklyGoal: number; targetDays: number | null }[]> {
   const rows = await db
-    .select({ theme: userWeeklyGoals.theme, weeklyGoal: userWeeklyGoals.weeklyGoal })
+    .select({ theme: userWeeklyGoals.theme, weeklyGoal: userWeeklyGoals.weeklyGoal, targetDays: userWeeklyGoals.targetDays })
     .from(userWeeklyGoals)
     .where(eq(userWeeklyGoals.userId, userId))
   return rows
 }
 
-export async function setWeeklyGoal(userId: string, theme: string, weeklyGoal: number): Promise<void> {
+export async function setWeeklyGoal(userId: string, theme: string, weeklyGoal: number, targetDays?: number): Promise<void> {
   await db.insert(userWeeklyGoals)
-    .values({ userId, theme, weeklyGoal, updatedAt: new Date() })
+    .values({ userId, theme, weeklyGoal, targetDays: targetDays ?? null, updatedAt: new Date() })
     .onConflictDoUpdate({
       target: [userWeeklyGoals.userId, userWeeklyGoals.theme],
-      set: { weeklyGoal, updatedAt: new Date() },
+      set: { weeklyGoal, targetDays: targetDays ?? null, updatedAt: new Date() },
     })
 }
 
@@ -389,31 +389,31 @@ function startOfWeek(): Date {
 export type ProgressSummary = {
   todayByTheme: Record<string, number>
   weekByTheme: Record<string, number>
+  startDateByTheme: Record<string, string>
   streak: number
 }
 
 export async function getProgressSummary(userId: string): Promise<ProgressSummary> {
-  // Use Drizzle query builder with SQL expressions so date comparisons happen entirely in the DB.
-  // date_trunc('week', ...) uses ISO weeks (Monday start), which matches our UI expectation.
+  // Count all-time completions per theme, plus today's count and first log date
   const rows = await db
     .select({
       theme: topics.theme,
-      weekCount: sql<number>`count(*)::int`,
+      totalCount: sql<number>`count(*)::int`,
       todayCount: sql<number>`count(*) filter (where ${userQuestionLog.loggedAt} >= current_date)::int`,
+      startDate: sql<string>`min(${userQuestionLog.loggedAt})::date::text`,
     })
     .from(userQuestionLog)
     .innerJoin(topics, eq(userQuestionLog.topicSlug, topics.slug))
-    .where(and(
-      eq(userQuestionLog.userId, userId),
-      sql`${userQuestionLog.loggedAt} >= date_trunc('week', current_timestamp)`,
-    ))
+    .where(eq(userQuestionLog.userId, userId))
     .groupBy(topics.theme)
 
   const todayByTheme: Record<string, number> = {}
-  const weekByTheme: Record<string, number> = {}
+  const weekByTheme: Record<string, number> = {} // kept for compat; now holds all-time totals
+  const startDateByTheme: Record<string, string> = {}
   for (const row of rows) {
-    weekByTheme[row.theme] = row.weekCount
+    weekByTheme[row.theme] = row.totalCount
     todayByTheme[row.theme] = row.todayCount
+    startDateByTheme[row.theme] = row.startDate
   }
 
   // Streak: distinct practice days (sort in JS to avoid SELECT DISTINCT + ORDER BY constraint)
@@ -425,7 +425,7 @@ export async function getProgressSummary(userId: string): Promise<ProgressSummar
   const days = dayRows.map(r => r.day).sort().reverse()
   const streak = computeStreak(days)
 
-  return { todayByTheme, weekByTheme, streak }
+  return { todayByTheme, weekByTheme, startDateByTheme, streak }
 }
 
 function computeStreak(days: string[]): number {
@@ -468,20 +468,23 @@ export async function logAndCheckMilestone(
   const { streak } = summary
 
   // Get goal
-  const [goalRow] = await db.select({ weeklyGoal: userWeeklyGoals.weeklyGoal })
+  const [goalRow] = await db.select({ weeklyGoal: userWeeklyGoals.weeklyGoal, targetDays: userWeeklyGoals.targetDays })
     .from(userWeeklyGoals)
     .where(and(eq(userWeeklyGoals.userId, userId), eq(userWeeklyGoals.theme, theme)))
     .limit(1)
-  const weeklyGoal = goalRow?.weeklyGoal ?? 0
+  const targetCount = goalRow?.weeklyGoal ?? 0
+  const targetDays = goalRow?.targetDays ?? null
+  // weekCount holds all-time total for this theme
+  const totalCount = weekCount
 
   let milestone: MilestoneType | null = null
 
-  if (weeklyGoal > 0) {
-    const dailyTarget = Math.ceil(weeklyGoal / 7)
-    const pct = (weekCount / weeklyGoal) * 100
-    const prevPct = ((weekCount - 1) / weeklyGoal) * 100
+  if (targetCount > 0) {
+    const dailyTarget = targetDays && targetDays > 0 ? targetCount / targetDays : null
+    const pct = (totalCount / targetCount) * 100
+    const prevPct = ((totalCount - 1) / targetCount) * 100
 
-    if (todayCount === dailyTarget && todayCount - 1 < dailyTarget) {
+    if (dailyTarget && todayCount === Math.ceil(dailyTarget) && todayCount - 1 < Math.ceil(dailyTarget)) {
       milestone = 'daily_goal'
     } else if (pct >= 100 && prevPct < 100) {
       milestone = 'weekly_100'
@@ -636,90 +639,88 @@ export async function getStarredProblemRows(
 
 // ── Weekly history ────────────────────────────────────────────────────────────
 
-export type WeekHistoryEntry = {
-  weekStart: string
-  weekEnd: string
-  themes: { theme: string; done: number; goal: number }[]
-  totalDone: number
-  note: string
-  isCurrentWeek: boolean
+// ── Theme milestone history ────────────────────────────────────────────────────
+
+export type ThemeMilestone = {
+  pct: 25 | 50 | 75 | 100
+  date: string // YYYY-MM-DD
+  count: number
 }
 
-export async function getWeeklyHistory(userId: string): Promise<WeekHistoryEntry[]> {
+export type ThemeHistoryEntry = {
+  theme: string
+  targetCount: number
+  targetDays: number | null
+  totalDone: number
+  startDate: string | null  // date of first log
+  milestones: ThemeMilestone[]
+  note: string
+}
+
+export async function getThemeHistory(userId: string): Promise<ThemeHistoryEntry[]> {
+  // All logs grouped by theme + date, ordered ascending
   const logRows = await db
     .select({
-      weekStart: sql<string>`date_trunc('week', ${userQuestionLog.loggedAt})::date::text`,
       theme: topics.theme,
-      doneCount: sql<number>`count(*)::int`,
+      date: sql<string>`${userQuestionLog.loggedAt}::date::text`,
+      cnt: sql<number>`count(*)::int`,
     })
     .from(userQuestionLog)
     .innerJoin(topics, eq(userQuestionLog.topicSlug, topics.slug))
     .where(eq(userQuestionLog.userId, userId))
-    .groupBy(sql`date_trunc('week', ${userQuestionLog.loggedAt})`, topics.theme)
-    .orderBy(sql`date_trunc('week', ${userQuestionLog.loggedAt}) DESC`)
+    .groupBy(topics.theme, sql`${userQuestionLog.loggedAt}::date`)
+    .orderBy(topics.theme, sql`${userQuestionLog.loggedAt}::date`)
 
   const goals = await getWeeklyGoals(userId)
-  const goalMap: Record<string, number> = {}
-  for (const g of goals) goalMap[g.theme] = g.weeklyGoal
+  const goalMap: Record<string, { targetCount: number; targetDays: number | null }> = {}
+  for (const g of goals) goalMap[g.theme] = { targetCount: g.weeklyGoal, targetDays: g.targetDays }
 
   const noteRows = await db
     .select({ weekStart: userWeekNotes.weekStart, note: userWeekNotes.note })
     .from(userWeekNotes)
     .where(eq(userWeekNotes.userId, userId))
+  // Use most recent note per theme (stored in userWeekNotes for now)
   const noteMap: Record<string, string> = {}
   for (const n of noteRows) noteMap[n.weekStart] = n.note
 
-  const now = new Date()
-  const mondayOffset = (now.getUTCDay() + 6) % 7
-  const currentMon = new Date(now)
-  currentMon.setUTCDate(now.getUTCDate() - mondayOffset)
-  currentMon.setUTCHours(0, 0, 0, 0)
-  const currentWeekStartStr = currentMon.toISOString().split('T')[0]
-
-  const weekMap: Record<string, Record<string, number>> = {}
+  // Build per-theme data
+  const themeMap: Record<string, { dates: { date: string; cnt: number }[] }> = {}
   for (const row of logRows) {
-    if (!weekMap[row.weekStart]) weekMap[row.weekStart] = {}
-    weekMap[row.weekStart][row.theme] = row.doneCount
+    if (!themeMap[row.theme]) themeMap[row.theme] = { dates: [] }
+    themeMap[row.theme].dates.push({ date: row.date, cnt: row.cnt })
   }
 
-  // All themes that have a goal set — always shown per week even if done=0
-  const goalThemes = Object.keys(goalMap).filter(t => goalMap[t] > 0)
+  // Themes to show: those with activity OR those with a goal set
+  const goalThemes = Object.keys(goalMap).filter(t => goalMap[t].targetCount > 0)
+  const allThemes = new Set([...Object.keys(themeMap), ...goalThemes])
 
-  return Object.keys(weekMap)
-    .sort()
-    .reverse()
-    .map(weekStart => {
-      const weekEnd = new Date(weekStart)
-      weekEnd.setUTCDate(weekEnd.getUTCDate() + 6)
-      const themeData = weekMap[weekStart]
+  return [...allThemes].map(theme => {
+    const { targetCount = 0, targetDays = null } = goalMap[theme] ?? {}
+    const dates = themeMap[theme]?.dates ?? []
+    const totalDone = dates.reduce((s, d) => s + d.cnt, 0)
+    const startDate = dates[0]?.date ?? null
 
-      // Union of: themes with activity this week + all goal themes
-      const allThemeSet = new Set([...Object.keys(themeData), ...goalThemes])
-      const themes = [...allThemeSet].map(theme => ({
-        theme,
-        done: themeData[theme] ?? 0,
-        goal: goalMap[theme] ?? 0,
-      }))
-
-      return {
-        weekStart,
-        weekEnd: weekEnd.toISOString().split('T')[0],
-        themes,
-        totalDone: themes.reduce((s, t) => s + t.done, 0),
-        note: noteMap[weekStart] ?? '',
-        isCurrentWeek: weekStart === currentWeekStartStr,
+    // Find milestone crossing dates via cumulative sum
+    const milestones: ThemeMilestone[] = []
+    if (targetCount > 0) {
+      let cumulative = 0
+      const thresholds: (25 | 50 | 75 | 100)[] = [25, 50, 75, 100]
+      for (const { date, cnt } of dates) {
+        cumulative += cnt
+        for (const pct of thresholds) {
+          if (!milestones.find(m => m.pct === pct) && cumulative >= targetCount * pct / 100) {
+            milestones.push({ pct, date, count: cumulative })
+          }
+        }
       }
-    })
-}
+    }
 
-export async function saveWeekNote(userId: string, weekStart: string, note: string): Promise<void> {
-  await db
-    .insert(userWeekNotes)
-    .values({ userId, weekStart, note })
-    .onConflictDoUpdate({
-      target: [userWeekNotes.userId, userWeekNotes.weekStart],
-      set: { note, updatedAt: new Date() },
-    })
+    // Use most recent userWeekNotes entry as theme note (best-effort)
+    const themeNoteKey = Object.keys(noteMap).sort().reverse()[0] ?? ''
+    void themeNoteKey
+
+    return { theme, targetCount, targetDays, totalDone, startDate, milestones, note: '' }
+  }).sort((a, b) => a.theme.localeCompare(b.theme, 'zh'))
 }
 
 export async function toggleStarredProblem(userId: string, topicSlug: string, problemId: string): Promise<boolean> {

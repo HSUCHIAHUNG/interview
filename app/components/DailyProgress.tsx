@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 
 interface Summary {
   todayByTheme: Record<string, number>
-  weekByTheme: Record<string, number>
+  totalByTheme: Record<string, number>
+  startDateByTheme: Record<string, string>
   streak: number
   goalMap: Record<string, number>
-  weekStart: string
-  weekEnd: string
+  targetDaysMap: Record<string, number | null>
 }
 
 export default function DailyProgress() {
@@ -29,7 +29,6 @@ export default function DailyProgress() {
 
   if (error) return null
 
-  // Loading skeleton
   if (!data) {
     return (
       <div className="bg-gray-900/60 border border-gray-800 rounded-2xl px-5 py-4 mb-6 animate-pulse">
@@ -46,17 +45,10 @@ export default function DailyProgress() {
 
   const themes = Object.keys(data.goalMap).filter(t => data.goalMap[t] > 0)
 
-  // Format "M/D" from YYYY-MM-DD string
-  const fmtDate = (s: string) => { const [, m, d] = s.split('-'); return `${+m}/${+d}` }
-  const weekRange = data.weekStart && data.weekEnd
-    ? `${fmtDate(data.weekStart)} – ${fmtDate(data.weekEnd)}`
-    : ''
-
-  // No goals set — show a prompt
   if (themes.length === 0 && data.streak === 0) {
     return (
       <div className="bg-gray-900/60 border border-gray-800 rounded-2xl px-5 py-3 mb-6 text-center">
-        <p className="text-sm text-gray-600">點擊右上角「🎯 目標」設定每週練習目標，即可追蹤進度</p>
+        <p className="text-sm text-gray-600">點擊右上角「🎯 目標」設定練習目標，即可追蹤進度</p>
       </div>
     )
   }
@@ -82,30 +74,43 @@ export default function DailyProgress() {
         {themes.length > 0 && (
           <div className="flex gap-6 flex-wrap flex-1 justify-end">
             {themes.map(theme => {
-              const weekGoal = data.goalMap[theme]
-              const weekDone = data.weekByTheme[theme] ?? 0
+              const targetCount = data.goalMap[theme]
+              const targetDays = data.targetDaysMap[theme]
+              const totalDone = data.totalByTheme[theme] ?? 0
               const todayDone = data.todayByTheme[theme] ?? 0
-              const dailyTarget = Math.ceil(weekGoal / 7)
-              const weekPct = Math.min(100, (weekDone / weekGoal) * 100)
-              const todayDone100 = todayDone >= dailyTarget
+              const startDate = data.startDateByTheme[theme] ?? null
+              const dailyRate = targetDays && targetDays > 0 ? targetCount / targetDays : null
+              const totalPct = Math.min(100, (totalDone / targetCount) * 100)
+              const dailyTarget = dailyRate ? dailyRate.toFixed(1) : null
+              const todayMet = dailyRate != null && todayDone >= dailyRate
+              const allDone = totalDone >= targetCount
+
+              // Overdue: target days elapsed since start, goal not yet complete
+              let isOverdue = false
+              if (!allDone && startDate && targetDays && targetDays > 0) {
+                const start = new Date(startDate)
+                const deadlineMs = start.getTime() + targetDays * 86400000
+                isOverdue = Date.now() > deadlineMs
+              }
 
               return (
                 <div key={theme} className="min-w-37.5">
                   <div className="flex justify-between text-xs mb-1">
                     <span className="font-medium text-gray-300">{theme}</span>
-                    <span className="text-gray-500">{weekDone}/{weekGoal} 本週</span>
+                    <span className={allDone ? 'text-green-400 font-medium' : isOverdue ? 'text-red-400 font-medium' : 'text-gray-500'}>
+                      {totalDone}/{targetCount} 累積{allDone ? ' ✓' : ''}
+                    </span>
                   </div>
-                  <div className="text-xs text-gray-700 mb-1">{weekRange}</div>
                   <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                      style={{ width: `${weekPct}%` }}
+                      className={`h-full rounded-full transition-all duration-500 ${allDone ? 'bg-green-500' : isOverdue ? 'bg-red-500' : 'bg-blue-500'}`}
+                      style={{ width: `${totalPct}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-xs text-gray-600 mt-1">
-                    <span>今日 {todayDone}/{dailyTarget}</span>
-                    <span className={todayDone100 ? 'text-green-400 font-medium' : ''}>
-                      {todayDone100 ? '✓ 今日達標' : `本週 ${Math.round(weekPct)}%`}
+                  <div className="flex justify-between text-xs mt-1">
+                    <span className="text-gray-600">今日 {todayDone}{dailyTarget ? `/${dailyTarget}` : ''}</span>
+                    <span className={allDone ? 'text-green-400 font-medium' : isOverdue ? 'text-red-400 font-medium' : todayMet ? 'text-green-400 font-medium' : 'text-gray-600'}>
+                      {allDone ? '✓ 目標達標' : isOverdue ? '⚠ 已超時' : todayMet ? '✓ 今日達標' : `${Math.round(totalPct)}%`}
                     </span>
                   </div>
                 </div>

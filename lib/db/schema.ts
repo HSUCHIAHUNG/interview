@@ -99,6 +99,7 @@ export const userWeeklyGoals = pgTable('user_weekly_goals', {
   userId: text('user_id').notNull(),
   theme: text('theme').notNull(),
   weeklyGoal: integer('weekly_goal').notNull().default(0),
+  targetDays: integer('target_days'),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => [
   unique('user_weekly_goals_uniq').on(t.userId, t.theme),

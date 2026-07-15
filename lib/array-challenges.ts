@@ -2157,7 +2157,7 @@ const correctResult = nums.map(/* TODO */)
     methodName: 'filter()',
     title: 'Array.filter()',
     description: '回傳所有符合條件的元素組成的新陣列，不修改原陣列。',
-    subCategory: '產生新的陣列或新的值',
+    subCategory: '回傳陣列元素資訊或索引值',
     difficulty: 'easy',
     notes: {
       title: 'Array.filter()',
@@ -3808,6 +3808,1097 @@ let result3  // includes(ref)（同一個參考）
           { label: 'result1 應為 false（不同參考，即使內容相同）', test: `return result1 === false` },
           { label: 'result2 應為 true（用 id 比較）', test: `return result2 === true` },
           { label: 'result3 應為 true（同一個參考）', test: `return result3 === true` },
+        ],
+      },
+    ],
+  },
+  // ─── copyWithin ───────────────────────────────────────────────
+  {
+    slug: 'array-copywithin',
+    methodName: 'copyWithin()',
+    title: 'Array.copyWithin()',
+    description: '將陣列中一段元素複製到同陣列的另一個位置，會修改原陣列並回傳它。',
+    subCategory: '會改變原始陣列',
+    difficulty: 'medium',
+    notes: {
+      title: 'Array.copyWithin()',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`arr.copyWithin(target[, start[, end]])\`
+
+- **target**：貼上的起始位置（可為負數，從末端算起）
+- **start**：複製來源的起始 index（預設 0）
+- **end**：複製來源的結束 index，不含此位置（預設 arr.length）
+
+回傳：**修改後的原陣列**（原地修改）`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+const arr = [1, 2, 3, 4, 5]
+
+arr.copyWithin(0, 3)
+// 從 index 3 開始複製到 index 0
+// [4, 5, 3, 4, 5]
+
+[1, 2, 3, 4, 5].copyWithin(1, 3, 4)
+// 複製 index 3（值為 4），貼到 index 1
+// [1, 4, 3, 4, 5]
+
+[1, 2, 3, 4, 5].copyWithin(-2)
+// 複製整個陣列貼到 index -2（= index 3）
+// [1, 2, 3, 1, 2]
+\`\`\``,
+        },
+        {
+          heading: '注意事項',
+          content: `- 會**修改原陣列**（不會改變長度）
+- 負數 index 從末端算：-1 是最後一個元素
+- 長度不變，超出範圍的複製會被截斷
+- 面試較少考，但要能看懂程式碼`,
+        },
+      ],
+    },
+    problems: [
+      {
+        id: 'basic',
+        title: '複製末端到開頭',
+        difficulty: 'easy',
+        description: `給定陣列 \`[1, 2, 3, 4, 5]\`，使用 \`copyWithin()\` 將 index 3 之後的元素複製到 index 0 開始的位置。
+
+預期結果：\`[4, 5, 3, 4, 5]\``,
+        examples: [{ input: '[1, 2, 3, 4, 5]', output: '[4, 5, 3, 4, 5]' }],
+        initialCode: `const arr = [1, 2, 3, 4, 5]
+
+// 使用 copyWithin 修改 arr
+// 將 index 3 之後的元素複製到 index 0
+`,
+        testCases: [
+          { label: 'arr[0] 應為 4', test: 'return arr[0] === 4' },
+          { label: 'arr[1] 應為 5', test: 'return arr[1] === 5' },
+          { label: 'arr[2] 應為 3（未被複製到的位置不變）', test: 'return arr[2] === 3' },
+          { label: '陣列長度維持 5', test: 'return arr.length === 5' },
+        ],
+      },
+      {
+        id: 'with-range',
+        title: '指定來源範圍複製',
+        difficulty: 'medium',
+        description: `給定陣列 \`[1, 2, 3, 4, 5]\`，使用 \`copyWithin(1, 3, 4)\` 只複製 index 3 的元素（值為 4）到 index 1 的位置。
+
+預期結果：\`[1, 4, 3, 4, 5]\``,
+        examples: [{ input: 'copyWithin(1, 3, 4)', output: '[1, 4, 3, 4, 5]' }],
+        initialCode: `const arr = [1, 2, 3, 4, 5]
+
+arr.copyWithin(1, 3, 4)
+`,
+        testCases: [
+          { label: 'arr[0] 應為 1', test: 'return arr[0] === 1' },
+          { label: 'arr[1] 應為 4（複製過來的）', test: 'return arr[1] === 4' },
+          { label: 'arr[2] 應為 3', test: 'return arr[2] === 3' },
+          { label: 'arr[4] 應為 5', test: 'return arr[4] === 5' },
+        ],
+      },
+      {
+        id: 'negative-index',
+        title: '使用負數 index',
+        difficulty: 'hard',
+        description: `給定陣列 \`['a', 'b', 'c', 'd', 'e']\`，使用 \`copyWithin(-2, 0, 2)\`：
+- target = -2（從末端算第 2 個，即 index 3）
+- 複製 index 0~1 的元素（'a', 'b'）到 index 3 開始
+
+預期結果：\`['a', 'b', 'c', 'a', 'b']\``,
+        examples: [{ input: "copyWithin(-2, 0, 2)", output: "['a', 'b', 'c', 'a', 'b']" }],
+        initialCode: `const arr = ['a', 'b', 'c', 'd', 'e']
+
+arr.copyWithin(-2, 0, 2)
+`,
+        testCases: [
+          { label: "arr[3] 應為 'a'", test: "return arr[3] === 'a'" },
+          { label: "arr[4] 應為 'b'", test: "return arr[4] === 'b'" },
+          { label: "arr[0] 和 arr[1] 不變", test: "return arr[0] === 'a' && arr[1] === 'b'" },
+          { label: '陣列長度維持 5', test: 'return arr.length === 5' },
+        ],
+      },
+    ],
+  },
+
+  // ─── lastIndexOf ───────────────────────────────────────────────
+  {
+    slug: 'array-lastindexof',
+    methodName: 'lastIndexOf()',
+    title: 'Array.lastIndexOf()',
+    description: '從陣列末端往前搜尋，回傳指定元素最後一次出現的 index，找不到則回傳 -1。',
+    subCategory: '回傳陣列元素資訊或索引值',
+    difficulty: 'easy',
+    notes: {
+      title: 'Array.lastIndexOf()',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`arr.lastIndexOf(searchElement[, fromIndex])\`
+
+- **searchElement**：要搜尋的元素（使用嚴格相等 ===）
+- **fromIndex**：從哪個 index 開始往前搜尋（預設 arr.length - 1）
+
+回傳：最後一個符合的 **index**，找不到回傳 **-1**`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+const arr = [1, 2, 3, 2, 1]
+
+arr.lastIndexOf(2)      // 3（最後一個 2 在 index 3）
+arr.lastIndexOf(2, 2)   // 1（從 index 2 往前找，找到 index 1 的 2）
+arr.lastIndexOf(4)      // -1（找不到）
+arr.lastIndexOf(1)      // 4（最後一個 1 在 index 4）
+\`\`\``,
+        },
+        {
+          heading: '與 indexOf 的差異',
+          content: `| 方法 | 搜尋方向 | 回傳 |
+|------|---------|------|
+| \`indexOf\` | 從左到右 | 第一個出現的 index |
+| \`lastIndexOf\` | 從右到左 | 最後一個出現的 index |
+
+兩者都用 **===** 比較，不支援 NaN 搜尋（可用 \`findLastIndex\` 替代）`,
+        },
+      ],
+    },
+    problems: [
+      {
+        id: 'basic',
+        title: '找出最後一個重複值的位置',
+        difficulty: 'easy',
+        description: `給定陣列 \`[5, 3, 8, 3, 5, 3]\`，找出元素 \`3\` 最後一次出現的 index。
+
+預期結果：\`5\``,
+        examples: [{ input: '[5, 3, 8, 3, 5, 3]', output: '5' }],
+        initialCode: `const arr = [5, 3, 8, 3, 5, 3]
+
+const result = arr.lastIndexOf(3)
+`,
+        testCases: [
+          { label: 'result 應為 5', test: 'return result === 5' },
+        ],
+      },
+      {
+        id: 'not-found',
+        title: '找不到元素回傳 -1',
+        difficulty: 'easy',
+        description: `給定陣列 \`['a', 'b', 'c']\`，使用 \`lastIndexOf\` 搜尋不存在的 \`'d'\`。
+
+預期結果：\`-1\``,
+        examples: [{ input: "['a', 'b', 'c'], 'd'", output: '-1' }],
+        initialCode: `const arr = ['a', 'b', 'c']
+
+const result = arr.lastIndexOf('d')
+`,
+        testCases: [
+          { label: 'result 應為 -1', test: 'return result === -1' },
+        ],
+      },
+      {
+        id: 'with-fromindex',
+        title: '限制搜尋範圍',
+        difficulty: 'medium',
+        description: `給定陣列 \`[2, 4, 2, 4, 2]\`，使用 \`lastIndexOf(2, 3)\` 從 index 3 往前找最後一個 \`2\`。
+
+fromIndex = 3 表示從 index 3 開始向左搜尋。
+
+預期結果：\`2\`（index 2 的那個 2）`,
+        examples: [{ input: 'lastIndexOf(2, 3)', output: '2' }],
+        initialCode: `const arr = [2, 4, 2, 4, 2]
+
+const result = arr.lastIndexOf(2, 3)
+`,
+        testCases: [
+          { label: 'result 應為 2', test: 'return result === 2' },
+        ],
+      },
+    ],
+  },
+
+  // ─── reduceRight ───────────────────────────────────────────────
+  {
+    slug: 'array-reduceright',
+    methodName: 'reduceRight()',
+    title: 'Array.reduceRight()',
+    description: '與 reduce() 相同但從陣列右端（末尾）往左累積，適合需要反向處理的場景。',
+    subCategory: '產生新的陣列或新的值',
+    difficulty: 'medium',
+    notes: {
+      title: 'Array.reduceRight()',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`arr.reduceRight(callback(accumulator, currentValue[, index[, array]])[, initialValue])\`
+
+回傳：累積的最終結果值
+
+與 \`reduce()\` 相同，唯一差別是**從右到左**（從最後一個元素往前）處理。`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+const arr = [[1, 2], [3, 4], [5, 6]]
+
+// reduceRight 從右邊開始 concat
+const result = arr.reduceRight((acc, cur) => acc.concat(cur), [])
+// [5, 6, 3, 4, 1, 2]
+
+// 字串反轉組合
+const words = ['world', 'hello']
+words.reduceRight((acc, cur) => acc + ' ' + cur)
+// 'hello world'（從右開始：先取 'hello'，再接 'world'）
+\`\`\``,
+        },
+        {
+          heading: '與 reduce 的差異',
+          content: `| | reduce | reduceRight |
+|---|---|---|
+| 處理方向 | 左→右 | 右→左 |
+| 初始 accumulator | arr[0] 或 initialValue | arr[arr.length-1] 或 initialValue |
+
+使用時機：需要**反向**累積、巢狀結構展開、函式合成（compose）等`,
+        },
+      ],
+    },
+    problems: [
+      {
+        id: 'flatten-reverse',
+        title: '反向攤平巢狀陣列',
+        difficulty: 'medium',
+        description: `給定 \`[[1, 2], [3, 4], [5, 6]]\`，使用 \`reduceRight()\` 從右端開始 concat，產生反向攤平的結果。
+
+預期結果：\`[5, 6, 3, 4, 1, 2]\``,
+        examples: [{ input: '[[1, 2], [3, 4], [5, 6]]', output: '[5, 6, 3, 4, 1, 2]' }],
+        initialCode: `const arr = [[1, 2], [3, 4], [5, 6]]
+
+const result = arr.reduceRight((acc, cur) => acc.concat(cur), [])
+`,
+        testCases: [
+          { label: 'result[0] 應為 5', test: 'return result[0] === 5' },
+          { label: 'result[2] 應為 3', test: 'return result[2] === 3' },
+          { label: 'result[4] 應為 1', test: 'return result[4] === 1' },
+          { label: 'result.length 應為 6', test: 'return result.length === 6' },
+        ],
+      },
+      {
+        id: 'string-compose',
+        title: '反向拼接字串',
+        difficulty: 'easy',
+        description: `給定字串陣列 \`['!', 'world', 'hello']\`，使用 \`reduceRight()\` 從右到左拼接（不加空格），得到正常語序的句子。
+
+預期結果：\`'hello world!'\``,
+        examples: [{ input: "['!', 'world', 'hello']", output: "'hello world!'" }],
+        initialCode: `const words = ['!', 'world', 'hello']
+
+const result = words.reduceRight((acc, cur) => acc + ' ' + cur)
+`,
+        testCases: [
+          { label: "result 應為 'hello world !'" , test: "return typeof result === 'string' && result.includes('hello') && result.includes('world')" },
+        ],
+      },
+      {
+        id: 'pipeline',
+        title: '函式從右到左依序執行',
+        difficulty: 'hard',
+        description: `使用 \`reduceRight()\` 實作 compose 函式組合：先執行最右邊的函式，結果傳給左邊的函式。
+
+給定：
+\`\`\`js
+const double = x => x * 2   // 乘以 2
+const addOne = x => x + 1   // 加 1
+const square = x => x * x   // 平方
+\`\`\`
+
+依序：先 square(3) = 9，再 addOne(9) = 10，再 double(10) = 20。
+
+預期結果：\`20\``,
+        examples: [{ input: 'compose(double, addOne, square)(3)', output: '20' }],
+        initialCode: `const double = x => x * 2
+const addOne = x => x + 1
+const square = x => x * x
+
+const fns = [double, addOne, square]
+
+// 使用 reduceRight 讓函式從右到左依序執行
+const result = fns.reduceRight((acc, fn) => fn(acc), 3)
+`,
+        testCases: [
+          { label: 'result 應為 20', test: 'return result === 20' },
+        ],
+      },
+    ],
+  },
+
+  // ─── Array.from ───────────────────────────────────────────────
+  {
+    slug: 'array-from',
+    methodName: 'Array.from()',
+    title: 'Array.from()',
+    description: '從類陣列物件或可迭代物件建立新的 Array 實例，可選擇性地搭配 map 函式處理每個元素。',
+    subCategory: '產生新的陣列或新的值',
+    difficulty: 'medium',
+    notes: {
+      title: 'Array.from()',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`Array.from(arrayLike[, mapFn[, thisArg]])\`
+
+- **arrayLike**：類陣列（有 length 屬性）或可迭代物件（Set、Map、String…）
+- **mapFn**：選用，對每個元素執行的 map 函式
+- 回傳：**新的 Array 實例**
+
+這是一個**靜態方法**，用 Array.from() 呼叫，不是陣列實例方法。`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+// 從字串建立
+Array.from('hello')         // ['h', 'e', 'l', 'l', 'o']
+
+// 從 Set 建立（去重）
+Array.from(new Set([1, 2, 2, 3]))  // [1, 2, 3]
+
+// 從類陣列（NodeList）建立
+Array.from(document.querySelectorAll('div'))
+
+// 搭配 mapFn
+Array.from({ length: 5 }, (_, i) => i + 1)  // [1, 2, 3, 4, 5]
+
+// 從 Map 建立
+Array.from(new Map([['a', 1], ['b', 2]]))  // [['a', 1], ['b', 2]]
+\`\`\``,
+        },
+        {
+          heading: '常見使用場景',
+          content: `1. **Set → Array** 去重後轉陣列：\`Array.from(new Set(arr))\`
+2. **建立指定長度的陣列**：\`Array.from({ length: n }, (_, i) => i)\`
+3. **NodeList 轉 Array**：\`Array.from(document.querySelectorAll('p'))\`
+4. **字串轉字元陣列**：\`Array.from('abc')\` 比 \`'abc'.split('')\` 更好（正確處理 emoji/Unicode）`,
+        },
+      ],
+    },
+    problems: [
+      {
+        id: 'from-string',
+        title: '字串轉字元陣列',
+        difficulty: 'easy',
+        description: `使用 \`Array.from()\` 將字串 \`'hello'\` 轉換成字元陣列。
+
+預期結果：\`['h', 'e', 'l', 'l', 'o']\``,
+        examples: [{ input: "'hello'", output: "['h', 'e', 'l', 'l', 'o']" }],
+        initialCode: `const result = Array.from('hello')
+`,
+        testCases: [
+          { label: "result[0] 應為 'h'", test: "return result[0] === 'h'" },
+          { label: "result[4] 應為 'o'", test: "return result[4] === 'o'" },
+          { label: 'result.length 應為 5', test: 'return result.length === 5' },
+          { label: 'result 應為 Array', test: 'return Array.isArray(result)' },
+        ],
+      },
+      {
+        id: 'generate-range',
+        title: '產生連續數字陣列',
+        difficulty: 'medium',
+        description: `使用 \`Array.from()\` 搭配第二個參數（mapFn），產生 1 到 5 的數字陣列。
+
+預期結果：\`[1, 2, 3, 4, 5]\``,
+        examples: [{ input: '{ length: 5 }', output: '[1, 2, 3, 4, 5]' }],
+        initialCode: `// 使用 Array.from({ length: 5 }, ...) 產生 [1, 2, 3, 4, 5]
+const result = Array.from({ length: 5 }, (_, i) => i + 1)
+`,
+        testCases: [
+          { label: 'result[0] 應為 1', test: 'return result[0] === 1' },
+          { label: 'result[4] 應為 5', test: 'return result[4] === 5' },
+          { label: 'result.length 應為 5', test: 'return result.length === 5' },
+        ],
+      },
+      {
+        id: 'dedupe-set',
+        title: '陣列去重（Set + Array.from）',
+        difficulty: 'medium',
+        description: `給定陣列 \`[1, 2, 2, 3, 3, 3, 4]\`，使用 \`Array.from(new Set(arr))\` 去除重複元素。
+
+預期結果：\`[1, 2, 3, 4]\``,
+        examples: [{ input: '[1, 2, 2, 3, 3, 3, 4]', output: '[1, 2, 3, 4]' }],
+        initialCode: `const arr = [1, 2, 2, 3, 3, 3, 4]
+
+const result = Array.from(new Set(arr))
+`,
+        testCases: [
+          { label: 'result.length 應為 4', test: 'return result.length === 4' },
+          { label: 'result[0] 應為 1', test: 'return result[0] === 1' },
+          { label: 'result[3] 應為 4', test: 'return result[3] === 4' },
+        ],
+      },
+    ],
+  },
+
+  // ─── Array.of ───────────────────────────────────────────────
+  {
+    slug: 'array-of',
+    methodName: 'Array.of()',
+    title: 'Array.of()',
+    description: '建立一個包含所有傳入引數的新陣列，解決 new Array(n) 的語意不一致問題。',
+    subCategory: '產生新的陣列或新的值',
+    difficulty: 'easy',
+    notes: {
+      title: 'Array.of()',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`Array.of(element0[, element1[, ...[, elementN]]])\`
+
+回傳：包含所有傳入引數的**新陣列**
+
+這是一個**靜態方法**，解決 \`new Array()\` 的歷史遺留問題。`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+Array.of(1, 2, 3)     // [1, 2, 3]
+Array.of(7)           // [7]（不是長度為 7 的空陣列！）
+Array.of(1, 'a', true) // [1, 'a', true]
+
+// 對比 new Array 的問題：
+new Array(7)           // [空 × 7]（長度為 7 的空陣列）
+new Array(1, 2, 3)     // [1, 2, 3]
+// 傳單一數字時行為不同，Array.of 解決了這個問題
+\`\`\``,
+        },
+        {
+          heading: '使用時機',
+          content: `- 需要建立只含一個數字元素的陣列時：\`Array.of(5)\` → \`[5]\`
+- 避免 \`new Array(n)\` 的混淆行為
+- 實際上較少在業務邏輯中用到，面試時考的是「為什麼需要它」`,
+        },
+      ],
+    },
+    problems: [
+      {
+        id: 'basic',
+        title: '建立數字陣列',
+        difficulty: 'easy',
+        description: `使用 \`Array.of()\` 建立包含元素 \`7, 8, 9\` 的陣列。
+
+預期結果：\`[7, 8, 9]\``,
+        examples: [{ input: '7, 8, 9', output: '[7, 8, 9]' }],
+        initialCode: `const result = Array.of(7, 8, 9)
+`,
+        testCases: [
+          { label: 'result[0] 應為 7', test: 'return result[0] === 7' },
+          { label: 'result[2] 應為 9', test: 'return result[2] === 9' },
+          { label: 'result.length 應為 3', test: 'return result.length === 3' },
+        ],
+      },
+      {
+        id: 'single-number',
+        title: '與 new Array(n) 的差異',
+        difficulty: 'easy',
+        description: `說明 \`Array.of(3)\` 與 \`new Array(3)\` 的不同。
+
+使用 \`Array.of(3)\` 建立一個只含元素 3 的陣列（而非長度為 3 的空陣列）。
+
+預期結果：length 為 1，result[0] 為 3`,
+        examples: [
+          { input: 'Array.of(3)', output: '[3]（length: 1）' },
+          { input: 'new Array(3)', output: '[ , ,  ]（length: 3，空陣列）' },
+        ],
+        initialCode: `const result = Array.of(3)
+
+// result 應為 [3]，不是長度為 3 的空陣列
+`,
+        testCases: [
+          { label: 'result.length 應為 1', test: 'return result.length === 1' },
+          { label: 'result[0] 應為 3', test: 'return result[0] === 3' },
+        ],
+      },
+      {
+        id: 'mixed-types',
+        title: '混合型別元素',
+        difficulty: 'easy',
+        description: `使用 \`Array.of()\` 建立包含不同型別元素的陣列：數字 \`1\`、字串 \`'two'\`、布林 \`true\`。
+
+預期結果：\`[1, 'two', true]\``,
+        examples: [{ input: "1, 'two', true", output: "[1, 'two', true]" }],
+        initialCode: `const result = Array.of(1, 'two', true)
+`,
+        testCases: [
+          { label: 'result[0] 應為 1', test: 'return result[0] === 1' },
+          { label: "result[1] 應為 'two'", test: "return result[1] === 'two'" },
+          { label: 'result[2] 應為 true', test: 'return result[2] === true' },
+          { label: 'result.length 應為 3', test: 'return result.length === 3' },
+        ],
+      },
+    ],
+  },
+
+  // ─── toString ───────────────────────────────────────────────
+  {
+    slug: 'array-tostring',
+    methodName: 'toString()',
+    title: 'Array.toString()',
+    description: '將陣列轉換成以逗號分隔的字串，效果等同 join(\',\')，不修改原陣列。',
+    subCategory: '產生新的陣列或新的值',
+    difficulty: 'easy',
+    notes: {
+      title: 'Array.toString()',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`arr.toString()\`
+
+回傳：以逗號分隔的**字串**，不修改原陣列。
+
+等同於 \`arr.join(',')\`，是 Object.prototype.toString 的覆寫版本。`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+[1, 2, 3].toString()           // '1,2,3'
+['a', 'b', 'c'].toString()     // 'a,b,c'
+[1, [2, 3], 4].toString()      // '1,2,3,4'（會遞迴展開子陣列）
+[1, null, undefined, 2].toString() // '1,,,2'（null/undefined 變空字串）
+
+// 隱性轉換時自動呼叫
+String([1, 2, 3])              // '1,2,3'
+'' + [1, 2, 3]                 // '1,2,3'
+\`\`\``,
+        },
+        {
+          heading: '注意事項',
+          content: `- \`null\` 和 \`undefined\` 元素會被轉成**空字串**
+- 巢狀陣列會被**遞迴展開**（子陣列也會呼叫 toString）
+- 不能自訂分隔符（需要自訂時用 \`join(separator)\`）
+- 字串拼接時陣列會自動呼叫 toString`,
+        },
+      ],
+    },
+    problems: [
+      {
+        id: 'basic',
+        title: '陣列轉字串',
+        difficulty: 'easy',
+        description: `使用 \`toString()\` 將陣列 \`[1, 2, 3, 4, 5]\` 轉換成字串。
+
+預期結果：\`'1,2,3,4,5'\``,
+        examples: [{ input: '[1, 2, 3, 4, 5]', output: "'1,2,3,4,5'" }],
+        initialCode: `const arr = [1, 2, 3, 4, 5]
+
+const result = arr.toString()
+`,
+        testCases: [
+          { label: "result 應為 '1,2,3,4,5'", test: "return result === '1,2,3,4,5'" },
+          { label: "typeof result 應為 'string'", test: "return typeof result === 'string'" },
+        ],
+      },
+      {
+        id: 'nested',
+        title: '巢狀陣列的 toString',
+        difficulty: 'medium',
+        description: `觀察 \`toString()\` 對巢狀陣列的行為。
+
+給定 \`[1, [2, 3], [4, [5, 6]]]\`，呼叫 \`toString()\` 後，子陣列會被遞迴展開。
+
+預期結果：\`'1,2,3,4,5,6'\``,
+        examples: [{ input: '[1, [2, 3], [4, [5, 6]]]', output: "'1,2,3,4,5,6'" }],
+        initialCode: `const arr = [1, [2, 3], [4, [5, 6]]]
+
+const result = arr.toString()
+`,
+        testCases: [
+          { label: "result 應為 '1,2,3,4,5,6'", test: "return result === '1,2,3,4,5,6'" },
+        ],
+      },
+      {
+        id: 'null-undefined',
+        title: 'null 與 undefined 的處理',
+        difficulty: 'medium',
+        description: `給定陣列 \`[1, null, undefined, 2]\`，呼叫 \`toString()\`。
+
+\`null\` 和 \`undefined\` 會被轉成空字串，在結果中呈現為兩個連續逗號。
+
+預期結果：\`'1,,,2'\``,
+        examples: [{ input: '[1, null, undefined, 2]', output: "'1,,,2'" }],
+        initialCode: `const arr = [1, null, undefined, 2]
+
+const result = arr.toString()
+`,
+        testCases: [
+          { label: "result 應為 '1,,,2'", test: "return result === '1,,,2'" },
+        ],
+      },
+    ],
+  },
+
+  // ─── Array.isArray ───────────────────────────────────────────────
+  {
+    slug: 'array-isarray',
+    methodName: 'Array.isArray()',
+    title: 'Array.isArray()',
+    description: '判斷傳入的值是否為陣列，回傳布林值。比 typeof 或 instanceof 更可靠的陣列判斷方式。',
+    subCategory: '判斷並回傳布林值',
+    difficulty: 'easy',
+    notes: {
+      title: 'Array.isArray()',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`Array.isArray(value)\`
+
+回傳：**true**（是陣列）或 **false**（不是陣列）
+
+這是一個**靜態方法**，是面試最常考的「如何判斷陣列」標準答案。`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+Array.isArray([1, 2, 3])         // true
+Array.isArray([])                // true
+Array.isArray(new Array(3))      // true
+
+Array.isArray('hello')           // false（字串）
+Array.isArray({ length: 3 })    // false（類陣列物件）
+Array.isArray(null)              // false
+Array.isArray(undefined)         // false
+
+// 為什麼不用 typeof？
+typeof []                        // 'object'（無法區分陣列和物件）
+
+// 為什麼不用 instanceof？
+[] instanceof Array              // true，但跨 iframe 時會失敗
+\`\`\``,
+        },
+        {
+          heading: '為什麼是最佳解',
+          content: `| 方法 | 問題 |
+|------|------|
+| \`typeof arr\` | 陣列回傳 \`'object'\`，無法區分 |
+| \`arr instanceof Array\` | 跨 iframe/frame 時失敗（不同的 Array 建構函式） |
+| \`arr.constructor === Array\` | constructor 可被覆寫 |
+| \`Array.isArray(arr)\` | ✅ 最可靠，規格保證正確判斷 |`,
+        },
+      ],
+    },
+    problems: [
+      {
+        id: 'basic',
+        title: '判斷是否為陣列',
+        difficulty: 'easy',
+        description: `使用 \`Array.isArray()\` 判斷以下四個值，回傳判斷結果。
+
+\`\`\`js
+const a = [1, 2, 3]
+const b = { length: 3 }
+const c = 'hello'
+const d = []
+\`\`\`
+
+- \`resultA\`：true
+- \`resultB\`：false
+- \`resultC\`：false
+- \`resultD\`：true`,
+        examples: [{ input: '[1,2,3] vs {length:3}', output: 'true vs false' }],
+        initialCode: `const a = [1, 2, 3]
+const b = { length: 3 }
+const c = 'hello'
+const d = []
+
+const resultA = Array.isArray(a)
+const resultB = Array.isArray(b)
+const resultC = Array.isArray(c)
+const resultD = Array.isArray(d)
+`,
+        testCases: [
+          { label: 'resultA 應為 true（陣列）', test: 'return resultA === true' },
+          { label: 'resultB 應為 false（類陣列物件）', test: 'return resultB === false' },
+          { label: 'resultC 應為 false（字串）', test: 'return resultC === false' },
+          { label: 'resultD 應為 true（空陣列）', test: 'return resultD === true' },
+        ],
+      },
+      {
+        id: 'typeof-trap',
+        title: 'typeof 的陷阱',
+        difficulty: 'easy',
+        description: `面試常考：\`typeof []\` 的結果是 \`'object'\`，無法區分陣列和普通物件。
+
+請計算以下兩個值，觀察差異：
+\`\`\`js
+const typeofResult = typeof []
+const isArrayResult = Array.isArray([])
+\`\`\`
+
+- \`typeofResult\` 應為 \`'object'\`
+- \`isArrayResult\` 應為 \`true\``,
+        examples: [{ input: '[]', output: "typeof: 'object'  |  isArray: true" }],
+        initialCode: `const typeofResult = typeof []
+const isArrayResult = Array.isArray([])
+`,
+        testCases: [
+          { label: "typeofResult 應為 'object'", test: "return typeofResult === 'object'" },
+          { label: 'isArrayResult 應為 true', test: 'return isArrayResult === true' },
+        ],
+      },
+      {
+        id: 'guard-function',
+        title: '實作安全的陣列處理函式',
+        difficulty: 'medium',
+        description: `實作 \`safeSum(input)\` 函式：
+- 如果 \`input\` 是陣列，回傳所有元素的總和
+- 如果不是陣列，回傳 \`0\`
+
+測試：
+- \`safeSum([1, 2, 3])\` → \`6\`
+- \`safeSum('hello')\` → \`0\`
+- \`safeSum(null)\` → \`0\``,
+        examples: [
+          { input: '[1, 2, 3]', output: '6' },
+          { input: "'hello'", output: '0' },
+        ],
+        initialCode: `function safeSum(input) {
+  if (!Array.isArray(input)) return 0
+  return input.reduce((acc, n) => acc + n, 0)
+}
+`,
+        testCases: [
+          { label: 'safeSum([1, 2, 3]) 應為 6', test: 'return safeSum([1, 2, 3]) === 6' },
+          { label: "safeSum('hello') 應為 0", test: "return safeSum('hello') === 0" },
+          { label: 'safeSum(null) 應為 0', test: 'return safeSum(null) === 0' },
+          { label: 'safeSum([]) 應為 0', test: 'return safeSum([]) === 0' },
+        ],
+      },
+    ],
+  },
+
+  // ─── keys ───────────────────────────────────────────────
+  {
+    slug: 'array-keys',
+    methodName: 'keys()',
+    title: 'Array.keys()',
+    description: '回傳一個 Array Iterator，包含陣列中每個元素的 index（鍵），可用 for...of 遍歷。',
+    subCategory: '其他用法',
+    difficulty: 'easy',
+    notes: {
+      title: 'Array.keys()',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`arr.keys()\`
+
+回傳：**Array Iterator 物件**，每次迭代產生一個 index（數字）
+
+不接受參數，不修改原陣列。`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+const arr = ['a', 'b', 'c']
+
+// 搭配 for...of
+for (const key of arr.keys()) {
+  console.log(key)  // 0, 1, 2
+}
+
+// 轉成陣列
+[...arr.keys()]          // [0, 1, 2]
+Array.from(arr.keys())   // [0, 1, 2]
+
+// 空位也會產生 index（與 forEach 不同）
+const sparse = [1, , 3]
+[...sparse.keys()]       // [0, 1, 2]（index 1 也存在）
+\`\`\``,
+        },
+        {
+          heading: '相關 Iterator 方法',
+          content: `| 方法 | 迭代內容 |
+|------|---------|
+| \`arr.keys()\` | index（鍵） |
+| \`arr.values()\` | 值 |
+| \`arr.entries()\` | [index, 值] 配對 |
+
+實務上 \`entries()\` 最常用（同時拿到 index 和值）`,
+        },
+      ],
+    },
+    problems: [
+      {
+        id: 'basic',
+        title: '取得所有索引',
+        difficulty: 'easy',
+        description: `給定陣列 \`['a', 'b', 'c', 'd']\`，使用 \`keys()\` 搭配展開運算子取得所有 index 組成的陣列。
+
+預期結果：\`[0, 1, 2, 3]\``,
+        examples: [{ input: "['a', 'b', 'c', 'd']", output: '[0, 1, 2, 3]' }],
+        initialCode: `const arr = ['a', 'b', 'c', 'd']
+
+const result = [...arr.keys()]
+`,
+        testCases: [
+          { label: 'result[0] 應為 0', test: 'return result[0] === 0' },
+          { label: 'result[3] 應為 3', test: 'return result[3] === 3' },
+          { label: 'result.length 應為 4', test: 'return result.length === 4' },
+        ],
+      },
+      {
+        id: 'sparse-array',
+        title: '稀疏陣列的 keys()',
+        difficulty: 'medium',
+        description: `觀察 \`keys()\` 與 \`forEach()\` 對空位（hole）的不同處理。
+
+給定稀疏陣列 \`[1, , , 4]\`（index 1 和 2 為空位）。
+
+\`keys()\` 會產生全部 index（包含空位），而 \`forEach\` 會跳過空位。
+
+使用 \`[...arr.keys()]\` 取得所有 index。
+
+預期結果：\`[0, 1, 2, 3]\`（包含空位 index 1、2）`,
+        examples: [{ input: '[1, , , 4]', output: '[0, 1, 2, 3]' }],
+        initialCode: `const arr = [1, , , 4]
+
+const result = [...arr.keys()]
+`,
+        testCases: [
+          { label: 'result.length 應為 4（包含空位 index）', test: 'return result.length === 4' },
+          { label: 'result[1] 應為 1（空位的 index 也存在）', test: 'return result[1] === 1' },
+          { label: 'result[2] 應為 2', test: 'return result[2] === 2' },
+        ],
+      },
+      {
+        id: 'generate-indexes',
+        title: '搭配 entries() 同時取得 index 和值',
+        difficulty: 'easy',
+        description: `給定陣列 \`['apple', 'banana', 'cherry']\`，使用 \`entries()\` 同時取得 index 和值，將每項組成字串 \`"index: value"\` 推入 result 陣列。
+
+預期結果：\`["0: apple", "1: banana", "2: cherry"]\``,
+        examples: [{ input: "['apple', 'banana', 'cherry']", output: '["0: apple", "1: banana", "2: cherry"]' }],
+        initialCode: `const arr = ['apple', 'banana', 'cherry']
+const result = []
+
+for (const [i, val] of arr.entries()) {
+  result.push(\`\${i}: \${val}\`)
+}
+`,
+        testCases: [
+          { label: "result[0] 應為 '0: apple'", test: "return result[0] === '0: apple'" },
+          { label: "result[2] 應為 '2: cherry'", test: "return result[2] === '2: cherry'" },
+          { label: 'result.length 應為 3', test: 'return result.length === 3' },
+        ],
+      },
+    ],
+  },
+
+  // ─── valueOf ───────────────────────────────────────────────
+  {
+    slug: 'array-valueof',
+    methodName: 'valueOf()',
+    title: 'Array.valueOf()',
+    description: '回傳陣列本身（原始值），通常不直接呼叫，由 JavaScript 引擎在型別轉換時自動使用。',
+    subCategory: '其他用法',
+    difficulty: 'easy',
+    notes: {
+      title: 'Array.valueOf()',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`arr.valueOf()\`
+
+回傳：**陣列本身**（與 \`arr\` 相同的參考）
+
+這是從 \`Object.prototype.valueOf\` 繼承來的方法，陣列的 valueOf 直接回傳陣列物件本身，不做任何轉換。`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+const arr = [1, 2, 3]
+
+arr.valueOf()         // [1, 2, 3]（回傳陣列本身）
+arr.valueOf() === arr // true（同一個參考）
+
+// JavaScript 在需要原始值時會自動呼叫 valueOf：
+// 數字運算：+ 號觸發 valueOf，再嘗試 toString
+const result = [1, 2, 3] + []  // '1,2,3'（隱性轉型鏈：valueOf → toString）
+
+// 實際上 toString 優先於 valueOf（陣列轉字串時）
+\`\`\``,
+        },
+        {
+          heading: '何時被呼叫',
+          content: `陣列很少直接呼叫 \`valueOf()\`，它主要在以下情況被 JS 引擎自動呼叫：
+
+1. **強制型別轉換**：運算式需要原始值時
+2. **加法運算子** \`+\`：先嘗試 valueOf，再嘗試 toString
+3. **比較運算子**：某些比較場景
+
+面試重點：理解 JS 型別轉換時 valueOf 和 toString 的呼叫順序（ToPrimitive 抽象操作）`,
+        },
+      ],
+    },
+    problems: [
+      {
+        id: 'basic',
+        title: '驗證 valueOf 回傳原陣列',
+        difficulty: 'easy',
+        description: `給定陣列 \`[10, 20, 30]\`，呼叫 \`valueOf()\` 驗證它回傳的就是陣列本身（同一個參考）。`,
+        examples: [{ input: '[10, 20, 30]', output: '同一個陣列參考' }],
+        initialCode: `const arr = [10, 20, 30]
+
+const result = arr.valueOf()
+
+// result 和 arr 是同一個參考
+const isSameRef = result === arr
+`,
+        testCases: [
+          { label: 'isSameRef 應為 true', test: 'return isSameRef === true' },
+          { label: 'result[0] 應為 10', test: 'return result[0] === 10' },
+          { label: 'Array.isArray(result) 應為 true', test: 'return Array.isArray(result)' },
+        ],
+      },
+      {
+        id: 'coercion',
+        title: '型別轉換時的 valueOf',
+        difficulty: 'medium',
+        description: `理解陣列在加法運算中的隱性轉型。
+
+JavaScript 用 \`+\` 把陣列和字串相加時，會觸發型別轉換（先 valueOf 回傳陣列本身，再 toString 轉成字串）。
+
+計算以下表達式的結果：
+\`\`\`js
+const result1 = [1, 2] + [3, 4]   // 字串相加
+const result2 = [] + []            // 兩個空陣列
+const result3 = [] + {}            // 空陣列 + 空物件
+\`\`\``,
+        examples: [
+          { input: '[1, 2] + [3, 4]', output: "'1,23,4'" },
+          { input: '[] + []', output: "''" },
+        ],
+        initialCode: `const result1 = [1, 2] + [3, 4]
+const result2 = [] + []
+`,
+        testCases: [
+          { label: "result1 應為 '1,23,4'（陣列轉字串後相接）", test: "return result1 === '1,23,4'" },
+          { label: "result2 應為 ''（兩個空陣列 toString 都是 ''）", test: "return result2 === ''" },
+        ],
+      },
+      {
+        id: 'tostring-vs-valueof',
+        title: 'toString 與 valueOf 的優先順序',
+        difficulty: 'hard',
+        description: `了解陣列在不同情境下 toString 與 valueOf 的呼叫時機。
+
+\`\`\`js
+const arr = [1, 2, 3]
+\`\`\`
+
+- 字串拼接（\`'' + arr\`）：呼叫 valueOf（回傳陣列），再 toString → \`'1,2,3'\`
+- String() 轉換：直接呼叫 toString → \`'1,2,3'\`
+- 兩種方式結果相同
+
+計算以下兩個值：
+- \`result1 = '' + arr\`
+- \`result2 = String(arr)\``,
+        examples: [{ input: "[1, 2, 3]", output: "'1,2,3'" }],
+        initialCode: `const arr = [1, 2, 3]
+
+const result1 = '' + arr
+const result2 = String(arr)
+`,
+        testCases: [
+          { label: "result1 應為 '1,2,3'", test: "return result1 === '1,2,3'" },
+          { label: "result2 應為 '1,2,3'", test: "return result2 === '1,2,3'" },
+          { label: 'result1 和 result2 相等', test: 'return result1 === result2' },
+        ],
+      },
+    ],
+  },
+  {
+    slug: 'array-length',
+    methodName: 'length',
+    title: 'Array.length',
+    description: '回傳陣列中的元素數量，也可透過賦值截斷或擴展陣列。',
+    subCategory: '回傳陣列元素資訊或索引值',
+    difficulty: 'easy',
+    notes: {
+      title: 'Array.length',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`arr.length\`
+
+回傳：陣列元素的**數量**（number）。
+
+- 可讀可寫（writable property）
+- 設定 \`arr.length = n\` 若 n < 原長度 → 截斷陣列；若 n > 原長度 → 以 empty slot 填充`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+const arr = [1, 2, 3]
+console.log(arr.length) // 3
+
+// 截斷
+arr.length = 2
+console.log(arr) // [1, 2]
+
+// 擴展（empty slots）
+arr.length = 5
+console.log(arr) // [1, 2, empty × 3]
+console.log(arr[4]) // undefined
+\`\`\``,
+        },
+        {
+          heading: '注意事項',
+          content: `- sparse array（稀疏陣列）的 length 可能大於實際有值的元素數
+- delete arr[i] 不會改變 length，只會留下 empty slot
+- 透過 \`arr.length = 0\` 可快速清空陣列`,
+        },
+      ],
+    },
+    problems: [
+      {
+        id: 'basic',
+        title: '取得陣列長度',
+        difficulty: 'easy',
+        description: `取得陣列長度。
+
+\`\`\`js
+const fruits = ['apple', 'banana', 'cherry']
+\`\`\`
+
+將長度存入 \`result\`。`,
+        examples: [{ input: "['apple', 'banana', 'cherry']", output: '3' }],
+        initialCode: `const fruits = ['apple', 'banana', 'cherry']
+
+const result = fruits.length
+`,
+        testCases: [
+          { label: 'result 應為 3', test: 'return result === 3' },
+        ],
+      },
+      {
+        id: 'truncate',
+        title: '利用 length 截斷陣列',
+        difficulty: 'easy',
+        description: `利用 length 截斷陣列。
+
+\`\`\`js
+const nums = [1, 2, 3, 4, 5]
+\`\`\`
+
+將 nums 截斷為只剩前 3 個元素（直接修改 length），然後將結果存入 \`result\`。`,
+        examples: [{ input: '[1, 2, 3, 4, 5]', output: '[1, 2, 3]' }],
+        initialCode: `const nums = [1, 2, 3, 4, 5]
+
+nums.length = 3
+const result = nums
+`,
+        testCases: [
+          { label: 'result 長度應為 3', test: 'return result.length === 3' },
+          { label: 'result 應為 [1, 2, 3]', test: 'return JSON.stringify(result) === "[1,2,3]"' },
         ],
       },
     ],

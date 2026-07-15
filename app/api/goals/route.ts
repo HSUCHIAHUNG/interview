@@ -18,12 +18,13 @@ export async function PUT(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json() as { theme?: string; weeklyGoal?: number }
+  const body = await req.json() as { theme?: string; weeklyGoal?: number; targetDays?: number }
   if (!body.theme || body.weeklyGoal === undefined) {
     return NextResponse.json({ error: 'theme and weeklyGoal required' }, { status: 400 })
   }
 
   const goal = Math.max(0, Math.floor(body.weeklyGoal))
+  const targetDays = body.targetDays != null ? Math.max(1, Math.floor(body.targetDays)) : undefined
 
   // Validate against total topic count for theme
   const maxByTheme = await getTopicCountByTheme()
@@ -32,6 +33,6 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: `目標不能超過該主題現有題數（${max} 題）` }, { status: 400 })
   }
 
-  await setWeeklyGoal(userId, body.theme, goal)
+  await setWeeklyGoal(userId, body.theme, goal, targetDays)
   return NextResponse.json({ ok: true })
 }

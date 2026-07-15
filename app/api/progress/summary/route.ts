@@ -14,24 +14,18 @@ export async function GET() {
   ])
 
   const goalMap: Record<string, number> = {}
-  for (const g of goals) goalMap[g.theme] = g.weeklyGoal
-
-  // Compute ISO week range (Monday–Sunday) in UTC to match DB date_trunc('week')
-  const now = new Date()
-  const dayOfWeek = now.getUTCDay() // 0=Sun
-  const mondayOffset = (dayOfWeek + 6) % 7
-  const weekStart = new Date(now)
-  weekStart.setUTCDate(now.getUTCDate() - mondayOffset)
-  weekStart.setUTCHours(0, 0, 0, 0)
-  const weekEnd = new Date(weekStart)
-  weekEnd.setUTCDate(weekStart.getUTCDate() + 6)
+  const targetDaysMap: Record<string, number | null> = {}
+  for (const g of goals) {
+    goalMap[g.theme] = g.weeklyGoal
+    targetDaysMap[g.theme] = g.targetDays
+  }
 
   return NextResponse.json({
     todayByTheme: summary.todayByTheme,
-    weekByTheme: summary.weekByTheme,
+    totalByTheme: summary.weekByTheme, // all-time totals
+    startDateByTheme: summary.startDateByTheme,
     streak: summary.streak,
     goalMap,
-    weekStart: weekStart.toISOString().split('T')[0],
-    weekEnd: weekEnd.toISOString().split('T')[0],
+    targetDaysMap,
   })
 }
