@@ -149,6 +149,16 @@ export const userWeekNotes = pgTable('user_week_notes', {
   unique('user_week_notes_uniq').on(t.userId, t.weekStart),
 ])
 
+export const userTodos = pgTable('user_todos', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().unique(),
+  data: jsonb('data').$type<{ sections: TodoSection[] }>().notNull().default({ sections: [] }),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export type TodoItem = { id: string; text: string; done: boolean }
+export type TodoSection = { id: string; title: string; items: TodoItem[] }
+
 export type Topic = typeof topics.$inferSelect
 export type Question = typeof questions.$inferSelect
 export type UserAnswer = typeof userAnswers.$inferSelect

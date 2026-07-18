@@ -637,6 +637,33 @@ export async function getStarredProblemRows(
   }
 }
 
+export async function getStarredCounts(userId: string): Promise<{
+  questionsCount: number
+  quizCount: number
+  problemsCount: number
+}> {
+  const [qResult, pResult] = await Promise.all([
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        withOptions: sql<number>`count(*) filter (where jsonb_array_length(${questions.options}) > 0)::int`,
+      })
+      .from(userStarredQuestions)
+      .innerJoin(questions, eq(questions.id, userStarredQuestions.questionId))
+      .where(eq(userStarredQuestions.userId, userId)),
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(userStarredProblems)
+      .where(eq(userStarredProblems.userId, userId)),
+  ])
+
+  return {
+    questionsCount: qResult[0]?.total ?? 0,
+    quizCount: qResult[0]?.withOptions ?? 0,
+    problemsCount: pResult[0]?.total ?? 0,
+  }
+}
+
 // ── Weekly history ────────────────────────────────────────────────────────────
 
 // ── Theme milestone history ────────────────────────────────────────────────────

@@ -51,6 +51,8 @@ function buildProblemFlat(problems: StarredProblemItem[]): ProblemFlatItem[] {
 export default function StarredClient() {
   const [tab, setTab] = useState<Tab>('quiz')
 
+  const [totalCounts, setTotalCounts] = useState<{ questionsCount: number; quizCount: number; problemsCount: number } | null>(null)
+
   const [questions, setQuestions] = useState<StarredQuestion[]>([])
   const [qCursor, setQCursor] = useState<number | null>(null)
   const [qHasMore, setQHasMore] = useState(true)
@@ -96,6 +98,7 @@ export default function StarredClient() {
   }
 
   useEffect(() => {
+    fetch('/api/starred/count').then(r => r.json()).then(setTotalCounts)
     if (!qFetched.current) { qFetched.current = true; loadQuestions() }
     if (!pFetched.current) { pFetched.current = true; loadProblems() }
   }, [])
@@ -126,9 +129,9 @@ export default function StarredClient() {
   const qaQuestions = questions
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: 'quiz', label: '選擇題', count: quizQuestions.length },
-    { key: 'qa', label: '問答練習', count: qaQuestions.length },
-    { key: 'practice', label: '實作題', count: problems.length },
+    { key: 'quiz', label: '選擇題', count: totalCounts?.quizCount ?? quizQuestions.length },
+    { key: 'qa', label: '問答練習', count: totalCounts?.questionsCount ?? qaQuestions.length },
+    { key: 'practice', label: '實作題', count: totalCounts?.problemsCount ?? problems.length },
   ]
 
   const quizFlat = buildQuestionFlat(quizQuestions)

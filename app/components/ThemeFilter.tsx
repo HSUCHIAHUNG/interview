@@ -41,11 +41,15 @@ export default function ThemeFilter({ themes, subCategoriesByTheme, topics }: Pr
     ? subParam
     : 'all'
 
-  const filtered = topics.filter(t => {
-    if (t.theme !== activeTheme) return false
-    if (activeSubCategory === 'all') return true
-    return t.subCategory === activeSubCategory
-  })
+  const DIFFICULTY_ORDER = { easy: 0, medium: 1, hard: 2 }
+
+  const filtered = topics
+    .filter(t => {
+      if (t.theme !== activeTheme) return false
+      if (activeSubCategory === 'all') return true
+      return t.subCategory === activeSubCategory
+    })
+    .sort((a, b) => DIFFICULTY_ORDER[a.meta.difficulty] - DIFFICULTY_ORDER[b.meta.difficulty])
 
   function handleThemeChange(theme: string) {
     NProgress.start()

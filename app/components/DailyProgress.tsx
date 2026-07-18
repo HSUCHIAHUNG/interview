@@ -87,10 +87,13 @@ export default function DailyProgress() {
 
               // Overdue: target days elapsed since start, goal not yet complete
               let isOverdue = false
-              if (!allDone && startDate && targetDays && targetDays > 0) {
+              let endDateStr: string | null = null
+              if (startDate && targetDays && targetDays > 0) {
                 const start = new Date(startDate)
                 const deadlineMs = start.getTime() + targetDays * 86400000
-                isOverdue = Date.now() > deadlineMs
+                if (!allDone) isOverdue = Date.now() > deadlineMs
+                const endDate = new Date(deadlineMs)
+                endDateStr = `${endDate.getMonth() + 1}/${endDate.getDate()}`
               }
 
               return (
@@ -111,6 +114,7 @@ export default function DailyProgress() {
                     <span className="text-gray-600">今日 {todayDone}{dailyTarget ? `/${dailyTarget}` : ''}</span>
                     <span className={allDone ? 'text-green-400 font-medium' : isOverdue ? 'text-red-400 font-medium' : todayMet ? 'text-green-400 font-medium' : 'text-gray-600'}>
                       {allDone ? '✓ 目標達標' : isOverdue ? '⚠ 已超時' : todayMet ? '✓ 今日達標' : `${Math.round(totalPct)}%`}
+                      {!allDone && endDateStr && <span className="text-gray-700 ml-1">· {endDateStr}</span>}
                     </span>
                   </div>
                 </div>

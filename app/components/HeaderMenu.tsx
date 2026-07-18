@@ -6,8 +6,9 @@ import { UserButton } from "@clerk/nextjs";
 import MemoModal from "./MemoModal";
 import WeekHistoryModal from "./WeekHistoryModal";
 import GoalModal from "./GoalModal";
+import TodoModal from "./TodoModal";
 
-type Modal = "memo" | "history" | "goal" | null;
+type Modal = "memo" | "history" | "goal" | "todo" | null;
 
 export default function HeaderMenu({ isLoggedIn }: { isLoggedIn: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -58,6 +59,9 @@ export default function HeaderMenu({ isLoggedIn }: { isLoggedIn: boolean }) {
               <button onClick={() => openModal("memo")} className={btnClass}>
                 📝 筆記
               </button>
+              <button onClick={() => openModal("todo")} className={btnClass}>
+                ✅ 待辦
+              </button>
               <button onClick={() => openModal("history")} className={btnClass}>
                 📅 歷史
               </button>
@@ -102,6 +106,12 @@ export default function HeaderMenu({ isLoggedIn }: { isLoggedIn: boolean }) {
                     📝 筆記
                   </button>
                   <button
+                    onClick={() => openModal("todo")}
+                    className={`${menuItemClass} border-t border-gray-800`}
+                  >
+                    ✅ 待辦
+                  </button>
+                  <button
                     onClick={() => openModal("history")}
                     className={`${menuItemClass} border-t border-gray-800`}
                   >
@@ -132,6 +142,7 @@ export default function HeaderMenu({ isLoggedIn }: { isLoggedIn: boolean }) {
         <WeekHistoryModal onClose={() => setModal(null)} />
       )}
       {modal === "goal" && <GoalModal onClose={() => setModal(null)} />}
+      {modal === "todo" && <TodoModal onClose={() => setModal(null)} />}
     </>
   );
 }

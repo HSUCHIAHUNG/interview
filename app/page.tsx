@@ -65,13 +65,13 @@ export default async function HomePage() {
         <div className="mb-10 flex justify-center gap-3 flex-wrap">
           <Link
             href="/quiz"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-8 py-3 rounded-xl shadow transition"
+            className="inline-flex w-full  items-center justify-center gap-2 md:w-[200px] bg-blue-600 hover:bg-blue-500 text-white font-semibold px-8 py-3 rounded-xl shadow transition"
           >
             <span>🎯</span> 開始隨機測驗
           </Link>
           <Link
             href="/listen-theme"
-            className="inline-flex items-center gap-2 bg-violet-700 hover:bg-violet-600 text-white font-semibold px-8 py-3 rounded-xl shadow transition"
+            className="inline-flex w-full items-center justify-center gap-2 md:w-[200px] bg-violet-700 hover:bg-violet-600 text-white font-semibold px-8 py-3 rounded-xl shadow transition"
           >
             <span>🎧</span> 彙整聆聽
           </Link>
