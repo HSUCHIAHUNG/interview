@@ -157,4 +157,17 @@ export const questions: Question[] = [
     explanation:
       '每個 map/filter 都會遍歷陣列一遍並建立新陣列。若資料量大，可以用一個 reduce 同時完成過濾和轉換，減少遍歷次數和中間陣列的建立。對於小型陣列，可讀性比效能更重要。',
   },
+  {
+    id: 13,
+    question: 'split()、slice()、splice() 三個方法，下列描述何者正確？',
+    options: [
+      '三者都是陣列方法，都會修改原陣列',
+      'split() 是字串方法，將字串切割為陣列；slice() 適用字串與陣列，回傳新陣列/字串，不修改原始值；splice() 是陣列方法，會直接修改原陣列',
+      'slice() 和 splice() 功能相同，只是命名不同',
+      'splice() 是字串方法，split() 和 slice() 都是陣列方法',
+    ],
+    answer: 1,
+    explanation:
+      '三者常被混淆，差異如下：\n• split()：字串專用，依分隔符切割字串，回傳新陣列，不修改原字串。例："a,b,c".split(",") → ["a","b","c"]\n• slice(start, end)：字串與陣列都適用，擷取指定範圍並回傳新陣列/新字串，不修改原始值。例：[1,2,3,4].slice(1,3) → [2,3]\n• splice(start, deleteCount, ...items)：陣列專用，可刪除、替換或插入元素，直接修改原陣列並回傳被刪除的元素。例：arr.splice(1,2) 會移除並回傳索引 1~2 的元素。',
+  },
 ]

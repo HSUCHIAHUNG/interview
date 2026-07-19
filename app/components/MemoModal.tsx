@@ -101,7 +101,7 @@ export default function MemoModal({ onClose }: Props) {
               value={content}
               onChange={handleChange}
               placeholder={'記錄待新增的題目、主題或想法...\n\n例如：\n- [ ] TypeScript utility types 再加 5 題\n- [ ] React 18 concurrent features\n- [ ] CSS grid layout'}
-              className="w-full h-full resize-none bg-transparent text-gray-200 placeholder-gray-600 text-sm leading-relaxed focus:outline-none"
+              className="w-full h-full resize-none bg-transparent text-gray-200 placeholder-gray-600 text-sm leading-relaxed focus:outline-none [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-600/50 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-gray-500/70"
             />
           )}
         </div>
