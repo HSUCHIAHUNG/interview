@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import ProgressBarProvider from '@/app/components/ProgressBarProvider'
+import FocusTracker from '@/app/components/FocusTracker'
 import './globals.css'
 
 const geistSans = Geist({
@@ -31,6 +32,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col">
+          <FocusTracker />
           <ProgressBarProvider>{children}</ProgressBarProvider>
         </body>
       </html>

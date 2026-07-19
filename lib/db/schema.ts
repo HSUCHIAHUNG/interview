@@ -156,6 +156,27 @@ export const userTodos = pgTable('user_todos', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+export const userDailyFocus = pgTable('user_daily_focus', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  date: text('date').notNull(), // 'YYYY-MM-DD'
+  seconds: integer('seconds').notNull().default(0),
+  leaveCount: integer('leave_count').notNull().default(0),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (t) => [
+  unique('user_daily_focus_uniq').on(t.userId, t.date),
+])
+
+export const userDailyNotes = pgTable('user_daily_notes', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  date: text('date').notNull(), // 'YYYY-MM-DD'
+  note: text('note').notNull().default(''),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (t) => [
+  unique('user_daily_notes_uniq').on(t.userId, t.date),
+])
+
 export type TodoItem = { id: string; text: string; done: boolean }
 export type TodoSection = { id: string; title: string; items: TodoItem[] }
 

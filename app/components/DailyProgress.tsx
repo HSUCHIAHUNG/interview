@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 
 interface Summary {
   todayByTheme: Record<string, number>
@@ -9,6 +10,16 @@ interface Summary {
   streak: number
   goalMap: Record<string, number>
   targetDaysMap: Record<string, number | null>
+  todayFocusSeconds: number
+  todayLeaveCount: number
+}
+
+function formatMinutes(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  if (m < 60) return `${m} 分鐘`
+  const h = Math.floor(m / 60)
+  const rem = m % 60
+  return rem > 0 ? `${h} 小時 ${rem} 分` : `${h} 小時`
 }
 
 export default function DailyProgress() {
@@ -44,8 +55,9 @@ export default function DailyProgress() {
   }
 
   const themes = Object.keys(data.goalMap).filter(t => data.goalMap[t] > 0)
+  const hasFocus = data.todayFocusSeconds > 0
 
-  if (themes.length === 0 && data.streak === 0) {
+  if (themes.length === 0 && data.streak === 0 && !hasFocus) {
     return (
       <div className="bg-gray-900/60 border border-gray-800 rounded-2xl px-5 py-3 mb-6 text-center">
         <p className="text-sm text-gray-600">點擊右上角「🎯 目標」設定練習目標，即可追蹤進度</p>
@@ -57,17 +69,37 @@ export default function DailyProgress() {
     <div className="bg-gray-900/60 border border-gray-800 rounded-2xl px-5 py-4 mb-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
 
-        {/* Streak */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-2xl">{data.streak > 0 ? '🔥' : '💤'}</span>
-          <div>
-            <p className="text-sm font-semibold text-gray-200">
-              {data.streak > 0 ? `連續 ${data.streak} 天` : '今天還沒完成主題'}
-            </p>
-            <p className="text-xs text-gray-600">
-              {data.streak >= 7 ? '超強！繼續保持！' : data.streak >= 3 ? '很有毅力！' : '完成主題即可累積連續天數'}
-            </p>
+        {/* Left: Streak + Focus (stack vertically on mobile) */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{data.streak > 0 ? '🔥' : '💤'}</span>
+            <div>
+              <p className="text-sm font-semibold text-gray-200">
+                {data.streak > 0 ? `連續 ${data.streak} 天` : '今天還沒完成主題'}
+              </p>
+              <p className="text-xs text-gray-600">
+                {data.streak >= 7 ? '超強！繼續保持！' : data.streak >= 3 ? '很有毅力！' : '完成主題即可累積連續天數'}
+              </p>
+            </div>
           </div>
+
+          {/* Focus time */}
+          <Link
+            href="/daily-log"
+            className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-800/60 hover:bg-gray-800 border border-gray-700/50 hover:border-gray-600 transition group"
+            title="查看學習日誌"
+          >
+            <span className="text-base">⏱</span>
+            <div>
+              <p className="text-xs font-semibold text-gray-300 group-hover:text-white transition">
+                {hasFocus ? formatMinutes(data.todayFocusSeconds) : '0 分鐘'}
+              </p>
+              {data.todayLeaveCount > 0 && (
+                <p className="text-xs text-gray-600">離開 {data.todayLeaveCount} 次</p>
+              )}
+            </div>
+            <span className="text-gray-600 group-hover:text-gray-400 text-xs ml-0.5 transition">📓</span>
+          </Link>
         </div>
 
         {/* Per-theme progress */}
@@ -85,7 +117,6 @@ export default function DailyProgress() {
               const todayMet = dailyRate != null && todayDone >= dailyRate
               const allDone = totalDone >= targetCount
 
-              // Overdue: target days elapsed since start, goal not yet complete
               let isOverdue = false
               let endDateStr: string | null = null
               if (startDate && targetDays && targetDays > 0) {
