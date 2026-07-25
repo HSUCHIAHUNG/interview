@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { getKeyPointsBySlug } from '@/lib/db/queries'
 import CheatsheetClient from './CheatsheetClient'
 
+export const dynamic = 'force-dynamic'
+
 export type MethodEntry = {
   slug: string
   name: string
