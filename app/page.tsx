@@ -75,6 +75,12 @@ export default async function HomePage() {
           >
             <span>🎧</span> 彙整聆聽
           </Link>
+          <Link
+            href="/cheatsheet"
+            className="inline-flex w-full items-center justify-center gap-2 md:w-[200px] bg-teal-700 hover:bg-teal-600 text-white font-semibold px-8 py-3 rounded-xl shadow transition"
+          >
+            <span>📋</span> 速查表
+          </Link>
         </div>
 
         {/* Daily progress strip (only when logged in) */}
