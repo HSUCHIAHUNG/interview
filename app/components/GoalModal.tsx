@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 
 interface GoalData {
   goals: { theme: string; weeklyGoal: number; targetDays: number | null }[]
@@ -19,21 +19,21 @@ export default function GoalModal({ onClose }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState<Record<string, boolean>>({})
 
-  const load = useCallback(async () => {
-    const res = await fetch('/api/goals')
-    const json = await res.json() as GoalData
-    setData(json)
-    const initCounts: Record<string, string> = {}
-    const initDays: Record<string, string> = {}
-    for (const g of json.goals) {
-      initCounts[g.theme] = String(g.weeklyGoal)
-      initDays[g.theme] = g.targetDays != null ? String(g.targetDays) : ''
-    }
-    setCounts(initCounts)
-    setDays(initDays)
+  useEffect(() => {
+    void (async () => {
+      const res = await fetch('/api/goals')
+      const json = await res.json() as GoalData
+      setData(json)
+      const initCounts: Record<string, string> = {}
+      const initDays: Record<string, string> = {}
+      for (const g of json.goals) {
+        initCounts[g.theme] = String(g.weeklyGoal)
+        initDays[g.theme] = g.targetDays != null ? String(g.targetDays) : ''
+      }
+      setCounts(initCounts)
+      setDays(initDays)
+    })()
   }, [])
-
-  useEffect(() => { void load() }, [load])
 
   async function save(theme: string) {
     const val = parseInt(counts[theme] ?? '0', 10)
@@ -75,11 +75,14 @@ export default function GoalModal({ onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-300 text-xl leading-none">×</button>
-        <h2 className="text-lg font-bold text-gray-100 mb-1">🎯 練習目標設定</h2>
-        <p className="text-sm text-gray-500 mb-6">設定想完成的題數與目標天數，每日建議量 = 目標題數 ÷ 天數</p>
+      <div className="relative bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-gray-800">
+          <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-300 text-xl leading-none">×</button>
+          <h2 className="text-lg font-bold text-gray-100 mb-1">🎯 練習目標設定</h2>
+          <p className="text-sm text-gray-500">設定想完成的題數與目標天數，每日建議量 = 目標題數 ÷ 天數</p>
+        </div>
 
+        <div className="overflow-y-auto flex-1 px-6 py-4 scrollbar-none [&::-webkit-scrollbar]:hidden">
         {!data ? (
           <div className="space-y-5 animate-pulse">
             {[0, 1].map(i => (
@@ -187,6 +190,7 @@ export default function GoalModal({ onClose }: Props) {
             })}
           </div>
         )}
+        </div>
       </div>
     </div>
   )

@@ -4914,15 +4914,16 @@ export function getAllMethodSlugs(): string[] {
 }
 
 import { hasTsChallenge, getTsChallenge, tsChallenges } from './ts-challenges'
+import { hasDataOpsChallenge, getDataOpsChallenge, dataOpsChallenges } from './data-ops-challenges'
 
 export function hasPracticeChallenge(slug: string): boolean {
-  return arrayMethodChallenges.some(e => e.slug === slug) || hasTsChallenge(slug)
+  return arrayMethodChallenges.some(e => e.slug === slug) || hasTsChallenge(slug) || hasDataOpsChallenge(slug)
 }
 
 export function getPracticeChallenge(slug: string): MethodEntry | undefined {
-  return arrayMethodChallenges.find(e => e.slug === slug) ?? getTsChallenge(slug)
+  return arrayMethodChallenges.find(e => e.slug === slug) ?? getTsChallenge(slug) ?? getDataOpsChallenge(slug)
 }
 
 export function getAllPracticeSlugs(): string[] {
-  return [...arrayMethodChallenges.map(e => e.slug), ...tsChallenges.map(e => e.slug)]
+  return [...arrayMethodChallenges.map(e => e.slug), ...tsChallenges.map(e => e.slug), ...dataOpsChallenges.map(e => e.slug)]
 }
