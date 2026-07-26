@@ -16,6 +16,41 @@ const CHEATSHEETS: CheatsheetEntry[] = [
     count: 33,
     category: 'JavaScript',
   },
+  {
+    href: '/cheatsheet/string-methods',
+    title: '字串方法',
+    description: '回傳值、語法速查（字串不可變，全部回傳新字串）',
+    count: 13,
+    category: 'JavaScript',
+  },
+  {
+    href: '/cheatsheet/number-methods',
+    title: '數字方法',
+    description: '類型（靜態/實例/Math/全域）、回傳值、語法速查',
+    count: 11,
+    category: 'JavaScript',
+  },
+  {
+    href: '/cheatsheet/object-methods',
+    title: '物件方法',
+    description: '是否修改原物件、回傳值、語法速查',
+    count: 10,
+    category: 'JavaScript',
+  },
+  {
+    href: '/cheatsheet/date-methods',
+    title: '日期時間方法',
+    description: '是否修改 Date 物件、回傳值、語法速查',
+    count: 8,
+    category: 'JavaScript',
+  },
+  {
+    href: '/cheatsheet/map-set',
+    title: 'Map & Set',
+    description: '適用結構（Map/WeakMap/Set/WeakSet）、關鍵回傳值',
+    count: 8,
+    category: 'JavaScript',
+  },
 ]
 
 const CATEGORY_COLOR: Record<string, string> = {

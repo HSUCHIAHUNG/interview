@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { MethodEntry } from '../types'
-import { SUB_CATEGORY_ORDER } from './constants'
+import type { MethodEntry, ColumnConfig } from './types'
 
 interface KeyPoint {
   id: number
@@ -13,6 +12,24 @@ interface KeyPoint {
 interface Props {
   methods: MethodEntry[]
   initialKeyPointsMap: Record<string, KeyPoint[]>
+  subCategoryOrder: string[]
+  columnConfig?: ColumnConfig
+}
+
+const DEFAULT_COLUMN_CONFIG: ColumnConfig = {
+  col2Label: '改變原始值',
+  col2Type: 'boolean',
+}
+
+function Col2Cell({ m, config }: { m: MethodEntry; config: ColumnConfig }) {
+  if (config.col2Type === 'badge') {
+    return (
+      <span className="text-xs px-2 py-0.5 rounded border border-gray-700 text-gray-400 bg-gray-800/60 whitespace-nowrap">
+        {m.badge ?? '—'}
+      </span>
+    )
+  }
+  return <span className="text-base">{m.mutates ? '✅' : '❌'}</span>
 }
 
 function KeyPointsSection({ slug, initial }: { slug: string; initial: KeyPoint[] }) {
@@ -94,11 +111,13 @@ function MethodRow({
   m,
   isOpen,
   keyPoints,
+  config,
   onToggle,
 }: {
   m: MethodEntry
   isOpen: boolean
   keyPoints: KeyPoint[]
+  config: ColumnConfig
   onToggle: () => void
 }) {
   return (
@@ -111,7 +130,7 @@ function MethodRow({
         <div className="md:hidden">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-mono text-gray-100 font-medium">{m.name}</span>
                 <Link
                   href={`/notes/${m.slug}`}
@@ -127,22 +146,22 @@ function MethodRow({
           </div>
           <div className="mt-2.5 space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="text-gray-600 text-xs w-16 shrink-0">改變原陣列</span>
-              <span className="text-sm">{m.mutates ? '✅' : '❌'}</span>
+              <span className="text-gray-600 text-xs w-16 shrink-0">{config.col2Label}</span>
+              <Col2Cell m={m} config={config} />
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-gray-600 text-xs w-16 shrink-0">回傳值</span>
               <p className="text-gray-400 text-sm leading-relaxed">{m.returns}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-600 text-xs w-16 shrink-0">語法</span>
+            <div className="flex items-start gap-2">
+              <span className="text-gray-600 text-xs w-16 shrink-0 mt-0.5">語法</span>
               <code className="text-blue-300 text-xs font-mono bg-blue-950/30 px-1.5 py-0.5 rounded">{m.syntax}</code>
             </div>
           </div>
         </div>
 
         {/* Desktop layout */}
-        <div className="hidden md:grid grid-cols-[1fr_80px_2fr_1.2fr] gap-4 items-start">
+        <div className="hidden md:grid grid-cols-[1fr_100px_2fr_1.2fr] gap-4 items-start">
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-gray-100 font-medium">{m.name}</span>
@@ -156,12 +175,12 @@ function MethodRow({
             </div>
             {m.note && <p className="text-xs text-gray-500 mt-0.5">{m.note}</p>}
           </div>
-          <div className="text-center text-base pt-0.5">
-            {m.mutates ? '✅' : '❌'}
+          <div className="flex justify-center pt-0.5">
+            <Col2Cell m={m} config={config} />
           </div>
           <span className="text-gray-400 text-sm leading-relaxed">{m.returns}</span>
           <div className="flex items-center justify-between gap-2">
-            <code className="text-blue-300 text-sm font-mono bg-blue-950/30 px-2 py-0.5 rounded">{m.syntax}</code>
+            <code className="text-blue-300 text-sm font-mono bg-blue-950/30 px-2 py-0.5 rounded break-all">{m.syntax}</code>
             <span className="text-gray-700 text-xs shrink-0">{isOpen ? '▲' : '▼'}</span>
           </div>
         </div>
@@ -177,8 +196,9 @@ function MethodRow({
   )
 }
 
-export default function CheatsheetClient({ methods, initialKeyPointsMap }: Props) {
+export default function CheatsheetClient({ methods, initialKeyPointsMap, subCategoryOrder, columnConfig }: Props) {
   const [expanded, setExpanded] = useState<string | null>(methods[0]?.slug ?? null)
+  const config = columnConfig ?? DEFAULT_COLUMN_CONFIG
 
   const groupMap = methods.reduce<Record<string, MethodEntry[]>>((acc, m) => {
     if (!acc[m.subCategory]) acc[m.subCategory] = []
@@ -186,7 +206,7 @@ export default function CheatsheetClient({ methods, initialKeyPointsMap }: Props
     return acc
   }, {})
 
-  const groups = SUB_CATEGORY_ORDER
+  const groups = subCategoryOrder
     .filter(cat => groupMap[cat])
     .map(cat => [cat, groupMap[cat]] as [string, MethodEntry[]])
 
@@ -200,10 +220,9 @@ export default function CheatsheetClient({ methods, initialKeyPointsMap }: Props
           </div>
 
           <div className="space-y-2">
-            {/* Table header — desktop only */}
-            <div className="hidden md:grid grid-cols-[1fr_80px_2fr_1.2fr] gap-4 px-4 py-2 text-xs text-gray-600 uppercase tracking-wider">
+            <div className="hidden md:grid grid-cols-[1fr_100px_2fr_1.2fr] gap-4 px-4 py-2 text-xs text-gray-600 uppercase tracking-wider">
               <span>方法</span>
-              <span className="text-center">改變原陣列</span>
+              <span className="text-center">{config.col2Label}</span>
               <span>回傳值</span>
               <span>語法</span>
             </div>
@@ -214,6 +233,7 @@ export default function CheatsheetClient({ methods, initialKeyPointsMap }: Props
                 m={m}
                 isOpen={expanded === m.slug}
                 keyPoints={initialKeyPointsMap[m.slug] ?? []}
+                config={config}
                 onToggle={() => setExpanded(prev => prev === m.slug ? null : m.slug)}
               />
             ))}

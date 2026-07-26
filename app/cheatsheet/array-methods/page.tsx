@@ -1,18 +1,10 @@
 import Link from 'next/link'
 import { getKeyPointsBySlug } from '@/lib/db/queries'
-import CheatsheetClient from './CheatsheetClient'
+import CheatsheetClient from '../CheatsheetClient'
+import type { MethodEntry } from '../types'
+import { SUB_CATEGORY_ORDER } from './constants'
 
 export const dynamic = 'force-dynamic'
-
-export type MethodEntry = {
-  slug: string
-  name: string
-  mutates: boolean
-  returns: string
-  syntax: string
-  subCategory: string
-  note: string
-}
 
 
 const METHODS: MethodEntry[] = [
@@ -350,7 +342,7 @@ export default async function ArrayCheatsheetPage() {
           </p>
         </div>
 
-        <CheatsheetClient methods={METHODS} initialKeyPointsMap={keyPointsMap} />
+        <CheatsheetClient methods={METHODS} initialKeyPointsMap={keyPointsMap} subCategoryOrder={SUB_CATEGORY_ORDER} />
       </div>
     </main>
   )
