@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useWindowVirtualizer } from '@tanstack/react-virtual'
 import type { StarredQuestion } from '@/lib/db/queries'
 import type { StarredProblemItem } from './types'
@@ -49,7 +50,12 @@ function buildProblemFlat(problems: StarredProblemItem[]): ProblemFlatItem[] {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function StarredClient() {
-  const [tab, setTab] = useState<Tab>('quiz')
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = searchParams.get('tab')
+    return t === 'quiz' || t === 'qa' || t === 'practice' ? t : 'quiz'
+  })
 
   const [totalCounts, setTotalCounts] = useState<{ questionsCount: number; quizCount: number; problemsCount: number } | null>(null)
 
@@ -105,6 +111,7 @@ export default function StarredClient() {
 
   function handleTabChange(t: Tab) {
     setTab(t)
+    router.replace(`/starred?tab=${t}`, { scroll: false })
   }
 
   async function unstarQuestion(questionId: number) {
@@ -499,7 +506,7 @@ function ProblemCard({ p, onUnstar }: { p: StarredProblemItem; onUnstar: (s: str
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <Link
-          href={`/practice/${p.topicSlug}/${p.problemId}`}
+          href={`/practice/${p.topicSlug}/${p.problemId}?from=starred`}
           className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 hover:border-blue-600 px-2.5 py-1.5 rounded-lg transition"
         >
           前往練習

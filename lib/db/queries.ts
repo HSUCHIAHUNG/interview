@@ -637,6 +637,15 @@ export async function getStarredProblemRows(
   }
 }
 
+export async function getAllStarredProblemRows(userId: string): Promise<StarredProblemRow[]> {
+  const rows = await db
+    .select({ topicSlug: userStarredProblems.topicSlug, problemId: userStarredProblems.problemId })
+    .from(userStarredProblems)
+    .where(eq(userStarredProblems.userId, userId))
+    .orderBy(asc(userStarredProblems.id))
+  return rows
+}
+
 export async function getStarredCounts(userId: string): Promise<{
   questionsCount: number
   quizCount: number

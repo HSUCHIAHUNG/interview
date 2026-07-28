@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
@@ -20,7 +21,9 @@ export default async function StarredPage() {
             <span>⭐</span> 必考題
           </h1>
         </div>
-        <StarredClient />
+        <Suspense>
+          <StarredClient />
+        </Suspense>
       </div>
     </main>
   )

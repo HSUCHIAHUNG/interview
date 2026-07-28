@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
 import type { MethodEntry, ColumnConfig } from './types'
 
 interface KeyPoint {
@@ -21,6 +22,23 @@ const DEFAULT_COLUMN_CONFIG: ColumnConfig = {
   col2Type: 'boolean',
 }
 
+function KeyPointText({ text }: { text: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        p: ({ children }) => <p className="leading-relaxed">{children}</p>,
+        ul: ({ children }) => <ul className="space-y-0.5 list-disc list-inside">{children}</ul>,
+        li: ({ children }) => <li>{children}</li>,
+        strong: ({ children }) => <strong className="text-gray-100 font-semibold">{children}</strong>,
+        code: ({ children }) => <code className="text-blue-300 font-mono text-xs bg-blue-950/30 px-1 rounded">{children}</code>,
+        pre: ({ children }) => <pre className="bg-gray-900 text-green-300 text-xs rounded-lg px-3 py-2 overflow-x-auto my-1 font-mono whitespace-pre">{children}</pre>,
+      }}
+    >
+      {text}
+    </ReactMarkdown>
+  )
+}
+
 function Col2Cell({ m, config }: { m: MethodEntry; config: ColumnConfig }) {
   if (config.col2Type === 'badge') {
     return (
@@ -32,8 +50,14 @@ function Col2Cell({ m, config }: { m: MethodEntry; config: ColumnConfig }) {
   return <span className="text-base">{m.mutates ? '✅' : '❌'}</span>
 }
 
-function KeyPointsSection({ slug, initial }: { slug: string; initial: KeyPoint[] }) {
-  const [items, setItems] = useState<KeyPoint[]>(initial)
+interface KeyPointsSectionProps {
+  slug: string
+  items: KeyPoint[]
+  onAdd: (kp: KeyPoint) => void
+  onDelete: (id: number) => void
+}
+
+function KeyPointsSection({ slug, items, onAdd, onDelete }: KeyPointsSectionProps) {
   const [input, setInput] = useState('')
   const [adding, setAdding] = useState(false)
   const [deletingId, setDeletingId] = useState<number | null>(null)
@@ -50,7 +74,7 @@ function KeyPointsSection({ slug, initial }: { slug: string; initial: KeyPoint[]
       })
       if (res.ok) {
         const { id } = await res.json() as { id: number }
-        setItems(prev => [...prev, { id, text }])
+        onAdd({ id, text })
         setInput('')
       }
     } finally {
@@ -61,8 +85,8 @@ function KeyPointsSection({ slug, initial }: { slug: string; initial: KeyPoint[]
   async function handleDelete(id: number) {
     setDeletingId(id)
     try {
-      await fetch(`/api/key-points/${slug}/${id}`, { method: 'DELETE' })
-      setItems(prev => prev.filter(k => k.id !== id))
+      const res = await fetch(`/api/key-points/${slug}/${id}`, { method: 'DELETE' })
+      if (res.ok) onDelete(id)
     } finally {
       setDeletingId(null)
     }
@@ -75,7 +99,7 @@ function KeyPointsSection({ slug, initial }: { slug: string; initial: KeyPoint[]
           {items.map(kp => (
             <li key={kp.id} className="flex items-start gap-2 group">
               <span className="text-blue-400 mt-0.5 shrink-0">•</span>
-              <span className="text-gray-300 text-sm flex-1">{kp.text}</span>
+              <div className="text-gray-300 text-sm flex-1"><KeyPointText text={kp.text} /></div>
               <button
                 onClick={() => handleDelete(kp.id)}
                 disabled={deletingId === kp.id}
@@ -88,17 +112,17 @@ function KeyPointsSection({ slug, initial }: { slug: string; initial: KeyPoint[]
         </ul>
       )}
       <div className="flex gap-2 pt-1">
-        <input
+        <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleAdd()}
           placeholder="新增重點筆記..."
-          className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-gray-500 transition"
+          rows={2}
+          className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-gray-500 transition resize-none"
         />
         <button
           onClick={handleAdd}
           disabled={adding || !input.trim()}
-          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 text-sm rounded-md transition"
+          className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-gray-300 text-sm rounded-md transition self-end"
         >
           {adding ? '...' : '+ 新增'}
         </button>
@@ -113,12 +137,16 @@ function MethodRow({
   keyPoints,
   config,
   onToggle,
+  onAddKeyPoint,
+  onDeleteKeyPoint,
 }: {
   m: MethodEntry
   isOpen: boolean
   keyPoints: KeyPoint[]
   config: ColumnConfig
   onToggle: () => void
+  onAddKeyPoint: (kp: KeyPoint) => void
+  onDeleteKeyPoint: (id: number) => void
 }) {
   return (
     <div className="border border-gray-800 rounded-lg overflow-hidden bg-gray-900/40">
@@ -189,7 +217,12 @@ function MethodRow({
       {isOpen && (
         <div className="px-4 pb-4 border-t border-gray-800/60 bg-gray-900/60">
           <p className="text-xs text-gray-600 uppercase tracking-wider pt-3 mb-1">自訂重點</p>
-          <KeyPointsSection slug={m.slug} initial={keyPoints} />
+          <KeyPointsSection
+            slug={m.slug}
+            items={keyPoints}
+            onAdd={onAddKeyPoint}
+            onDelete={onDeleteKeyPoint}
+          />
         </div>
       )}
     </div>
@@ -198,7 +231,16 @@ function MethodRow({
 
 export default function CheatsheetClient({ methods, initialKeyPointsMap, subCategoryOrder, columnConfig }: Props) {
   const [expanded, setExpanded] = useState<string | null>(methods[0]?.slug ?? null)
+  const [keyPointsMap, setKeyPointsMap] = useState<Record<string, KeyPoint[]>>(initialKeyPointsMap)
   const config = columnConfig ?? DEFAULT_COLUMN_CONFIG
+
+  function handleAdd(slug: string, kp: KeyPoint) {
+    setKeyPointsMap(prev => ({ ...prev, [slug]: [...(prev[slug] ?? []), kp] }))
+  }
+
+  function handleDelete(slug: string, id: number) {
+    setKeyPointsMap(prev => ({ ...prev, [slug]: (prev[slug] ?? []).filter(k => k.id !== id) }))
+  }
 
   const groupMap = methods.reduce<Record<string, MethodEntry[]>>((acc, m) => {
     if (!acc[m.subCategory]) acc[m.subCategory] = []
@@ -232,9 +274,11 @@ export default function CheatsheetClient({ methods, initialKeyPointsMap, subCate
                 key={m.slug}
                 m={m}
                 isOpen={expanded === m.slug}
-                keyPoints={initialKeyPointsMap[m.slug] ?? []}
+                keyPoints={keyPointsMap[m.slug] ?? []}
                 config={config}
                 onToggle={() => setExpanded(prev => prev === m.slug ? null : m.slug)}
+                onAddKeyPoint={kp => handleAdd(m.slug, kp)}
+                onDeleteKeyPoint={id => handleDelete(m.slug, id)}
               />
             ))}
           </div>

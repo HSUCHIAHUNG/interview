@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPracticeChallenge } from '@/lib/array-challenges'
 import { auth } from '@clerk/nextjs/server'
-import { getUserCompletedProblems, getStarredProblemIds, getTopicNavInfo } from '@/lib/db/queries'
+import { getUserCompletedProblems, getStarredProblemIds, getTopicNavInfo, getAllStarredProblemRows } from '@/lib/db/queries'
 import PracticeClient from './PracticeClient'
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
@@ -12,12 +12,20 @@ const DIFFICULTY_COLOR = {
   hard: 'text-red-400 bg-red-900/30 border-red-800',
 }
 
-interface Props {
-  params: Promise<{ slug: string; id: string }>
+interface StarredNavItem {
+  topicSlug: string
+  id: string
+  title: string
 }
 
-export default async function ProblemPage({ params }: Props) {
+interface Props {
+  params: Promise<{ slug: string; id: string }>
+  searchParams: Promise<{ from?: string }>
+}
+
+export default async function ProblemPage({ params, searchParams }: Props) {
   const { slug, id } = await params
+  const { from } = await searchParams
   const entry = getPracticeChallenge(slug)
   if (!entry) notFound()
 
@@ -29,11 +37,30 @@ export default async function ProblemPage({ params }: Props) {
   const nextProblem = entry.problems[problemIndex + 1] ?? null
 
   const { userId } = await auth()
-  const [completedIds, starredIds, navInfo] = await Promise.all([
+  const [completedIds, starredIds, navInfo, allStarredRows] = await Promise.all([
     userId ? getUserCompletedProblems(userId, slug) : Promise.resolve(new Set<string>()),
     userId ? getStarredProblemIds(userId, slug) : Promise.resolve(new Set<string>()),
     getTopicNavInfo(slug),
+    from === 'starred' && userId ? getAllStarredProblemRows(userId) : Promise.resolve(null),
   ])
+
+  let starredPrev: StarredNavItem | null = null
+  let starredNext: StarredNavItem | null = null
+  if (allStarredRows) {
+    const currentIdx = allStarredRows.findIndex(r => r.topicSlug === slug && r.problemId === id)
+    if (currentIdx > 0) {
+      const prev = allStarredRows[currentIdx - 1]
+      const prevEntry = getPracticeChallenge(prev.topicSlug)
+      const prevProblem = prevEntry?.problems.find(p => p.id === prev.problemId)
+      if (prevProblem) starredPrev = { topicSlug: prev.topicSlug, id: prev.problemId, title: prevProblem.title }
+    }
+    if (currentIdx !== -1 && currentIdx < allStarredRows.length - 1) {
+      const next = allStarredRows[currentIdx + 1]
+      const nextEntry = getPracticeChallenge(next.topicSlug)
+      const nextProblem = nextEntry?.problems.find(p => p.id === next.problemId)
+      if (nextProblem) starredNext = { topicSlug: next.topicSlug, id: next.problemId, title: nextProblem.title }
+    }
+  }
 
   const backHref = navInfo
     ? `/?theme=${encodeURIComponent(navInfo.theme)}${navInfo.subCategory ? `&sub=${encodeURIComponent(navInfo.subCategory)}` : ''}`
@@ -79,6 +106,9 @@ export default async function ProblemPage({ params }: Props) {
           initialStarred={isStarred}
           prevProblem={prevProblem ? { id: prevProblem.id, title: prevProblem.title } : null}
           nextProblem={nextProblem ? { id: nextProblem.id, title: nextProblem.title } : null}
+          fromStarred={from === 'starred'}
+          starredPrev={starredPrev}
+          starredNext={starredNext}
         />
       </div>
     </main>

@@ -15,6 +15,12 @@ interface NavItem {
   title: string
 }
 
+interface StarredNavItem {
+  topicSlug: string
+  id: string
+  title: string
+}
+
 interface Props {
   entry: MethodEntry
   problem: Problem
@@ -24,6 +30,9 @@ interface Props {
   initialStarred?: boolean
   prevProblem: NavItem | null
   nextProblem: NavItem | null
+  fromStarred?: boolean
+  starredPrev?: StarredNavItem | null
+  starredNext?: StarredNavItem | null
 }
 
 export default function PracticeClient({
@@ -35,6 +44,9 @@ export default function PracticeClient({
   initialStarred = false,
   prevProblem,
   nextProblem,
+  fromStarred = false,
+  starredPrev = null,
+  starredNext = null,
 }: Props) {
   const [code, setCode] = useState(problem.initialCode)
   const [results, setResults] = useState<TestResult[] | null>(null)
@@ -205,31 +217,48 @@ export default function PracticeClient({
         </div>
 
         {/* Navigation */}
-        <div className="flex gap-3">
-          {prevProblem ? (
+        {fromStarred ? (
+          <div className="flex gap-3">
             <Link
-              href={`/practice/${topicSlug}/${prevProblem.id}`}
+              href={starredPrev ? `/practice/${starredPrev.topicSlug}/${starredPrev.id}?from=starred` : '/starred?tab=practice'}
               className="flex-1 text-center text-sm text-gray-500 hover:text-gray-300 border border-gray-800 hover:border-gray-700 py-2.5 rounded-xl transition"
             >
-              ← {prevProblem.title}
+              {starredPrev ? `← ${starredPrev.title}` : '← 返回必考題'}
             </Link>
-          ) : (
             <Link
-              href={`/practice/${topicSlug}`}
-              className="flex-1 text-center text-sm text-gray-500 hover:text-gray-300 border border-gray-800 hover:border-gray-700 py-2.5 rounded-xl transition"
-            >
-              ← 返回題目列表
-            </Link>
-          )}
-          {nextProblem && (
-            <Link
-              href={`/practice/${topicSlug}/${nextProblem.id}`}
+              href={starredNext ? `/practice/${starredNext.topicSlug}/${starredNext.id}?from=starred` : '/starred?tab=practice'}
               className="flex-1 text-center text-sm text-emerald-500 hover:text-emerald-400 border border-emerald-800/50 hover:border-emerald-700 py-2.5 rounded-xl transition"
             >
-              {nextProblem.title} →
+              {starredNext ? `${starredNext.title} →` : '回到必考題 →'}
             </Link>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            {prevProblem ? (
+              <Link
+                href={`/practice/${topicSlug}/${prevProblem.id}`}
+                className="flex-1 text-center text-sm text-gray-500 hover:text-gray-300 border border-gray-800 hover:border-gray-700 py-2.5 rounded-xl transition"
+              >
+                ← {prevProblem.title}
+              </Link>
+            ) : (
+              <Link
+                href={`/practice/${topicSlug}`}
+                className="flex-1 text-center text-sm text-gray-500 hover:text-gray-300 border border-gray-800 hover:border-gray-700 py-2.5 rounded-xl transition"
+              >
+                ← 返回題目列表
+              </Link>
+            )}
+            {nextProblem && (
+              <Link
+                href={`/practice/${topicSlug}/${nextProblem.id}`}
+                className="flex-1 text-center text-sm text-emerald-500 hover:text-emerald-400 border border-emerald-800/50 hover:border-emerald-700 py-2.5 rounded-xl transition"
+              >
+                {nextProblem.title} →
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Right: Code editor */}
