@@ -4915,15 +4915,39 @@ export function getAllMethodSlugs(): string[] {
 
 import { hasTsChallenge, getTsChallenge, tsChallenges } from './ts-challenges'
 import { hasDataOpsChallenge, getDataOpsChallenge, dataOpsChallenges } from './data-ops-challenges'
+import { hasStringChallenge, getStringChallenge, stringChallenges } from './string-challenges'
+import { hasNumberChallenge, getNumberChallenge, numberChallenges } from './number-challenges'
+import { hasDateChallenge, getDateChallenge, dateChallenges } from './date-challenges'
+import { hasObjectChallenge, getObjectChallenge, objectChallenges } from './object-challenges'
 
 export function hasPracticeChallenge(slug: string): boolean {
-  return arrayMethodChallenges.some(e => e.slug === slug) || hasTsChallenge(slug) || hasDataOpsChallenge(slug)
+  return arrayMethodChallenges.some(e => e.slug === slug)
+    || hasTsChallenge(slug)
+    || hasDataOpsChallenge(slug)
+    || hasStringChallenge(slug)
+    || hasNumberChallenge(slug)
+    || hasDateChallenge(slug)
+    || hasObjectChallenge(slug)
 }
 
 export function getPracticeChallenge(slug: string): MethodEntry | undefined {
-  return arrayMethodChallenges.find(e => e.slug === slug) ?? getTsChallenge(slug) ?? getDataOpsChallenge(slug)
+  return arrayMethodChallenges.find(e => e.slug === slug)
+    ?? getTsChallenge(slug)
+    ?? getDataOpsChallenge(slug)
+    ?? getStringChallenge(slug)
+    ?? getNumberChallenge(slug)
+    ?? getDateChallenge(slug)
+    ?? getObjectChallenge(slug)
 }
 
 export function getAllPracticeSlugs(): string[] {
-  return [...arrayMethodChallenges.map(e => e.slug), ...tsChallenges.map(e => e.slug), ...dataOpsChallenges.map(e => e.slug)]
+  return [
+    ...arrayMethodChallenges.map(e => e.slug),
+    ...tsChallenges.map(e => e.slug),
+    ...dataOpsChallenges.map(e => e.slug),
+    ...stringChallenges.map(e => e.slug),
+    ...numberChallenges.map(e => e.slug),
+    ...dateChallenges.map(e => e.slug),
+    ...objectChallenges.map(e => e.slug),
+  ]
 }
