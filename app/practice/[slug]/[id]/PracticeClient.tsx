@@ -58,11 +58,25 @@ export default function PracticeClient({
   async function toggleStar() {
     const next = !starred
     setStarred(next)
-    fetch('/api/starred-problems', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topicSlug, problemId: problem.id }),
-    }).catch(() => {})
+    try {
+      const res = await fetch('/api/starred-problems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicSlug, problemId: problem.id }),
+      })
+      if (!res.ok) {
+        setStarred(!next) // revert on failure
+      } else {
+        // Notify other tabs that starred problems changed
+        try {
+          const bc = new BroadcastChannel('starred-problems')
+          bc.postMessage({ type: 'toggle', starred: next })
+          bc.close()
+        } catch { /* BroadcastChannel not supported */ }
+      }
+    } catch {
+      setStarred(!next) // revert on network error
+    }
   }
 
   useEffect(() => {

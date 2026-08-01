@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   }
 
   if (type === 'problems') {
-    const { items, nextCursor } = await getStarredProblemRows(userId, cursor)
+    const items = await getStarredProblemRows(userId)
     const problems: StarredProblemItem[] = items.flatMap(row => {
       const entry = getPracticeChallenge(row.topicSlug)
       if (!entry) return []
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
         topicTitle: entry.title,
       }]
     })
-    return NextResponse.json({ problems, nextCursor })
+    return NextResponse.json({ problems })
   }
 
   return NextResponse.json({ error: 'Invalid type' }, { status: 400 })

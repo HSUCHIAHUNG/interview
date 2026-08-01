@@ -66,8 +66,6 @@ export default function StarredClient() {
   const qFetched = useRef(false)
 
   const [problems, setProblems] = useState<StarredProblemItem[]>([])
-  const [pCursor, setPCursor] = useState<number | null>(null)
-  const [pHasMore, setPHasMore] = useState(true)
   const [pLoading, setPLoading] = useState(false)
   const pFetched = useRef(false)
 
@@ -87,17 +85,13 @@ export default function StarredClient() {
     }
   }
 
-  async function loadProblems(cursor: number | null = null) {
+  async function loadProblems() {
     if (pLoading) return
     setPLoading(true)
     try {
-      const url = `/api/starred/list?type=problems${cursor != null ? `&cursor=${cursor}` : ''}`
-      const res = await fetch(url)
+      const res = await fetch('/api/starred/list?type=problems')
       const data = await res.json()
-      const batch: StarredProblemItem[] = data.problems ?? []
-      setProblems(prev => cursor == null ? batch : [...prev, ...batch])
-      setPCursor(data.nextCursor)
-      setPHasMore(data.nextCursor !== null)
+      setProblems(data.problems ?? [])
     } finally {
       setPLoading(false)
     }
@@ -107,6 +101,34 @@ export default function StarredClient() {
     fetch('/api/starred/count').then(r => r.json()).then(setTotalCounts)
     if (!qFetched.current) { qFetched.current = true; loadQuestions() }
     if (!pFetched.current) { pFetched.current = true; loadProblems() }
+
+    function refreshProblems() {
+      fetch('/api/starred/count').then(r => r.json()).then(setTotalCounts)
+      loadProblems()
+    }
+
+    // BroadcastChannel: practice tab notifies this tab when a problem is starred
+    let bc: BroadcastChannel | null = null
+    try {
+      bc = new BroadcastChannel('starred-problems')
+      bc.onmessage = () => refreshProblems()
+    } catch { /* BroadcastChannel not supported */ }
+
+    // Fallback: re-fetch when this tab becomes visible (with delay to avoid race condition)
+    let visibilityTimer: ReturnType<typeof setTimeout> | null = null
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        if (visibilityTimer) clearTimeout(visibilityTimer)
+        visibilityTimer = setTimeout(refreshProblems, 500)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      bc?.close()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (visibilityTimer) clearTimeout(visibilityTimer)
+    }
   }, [])
 
   function handleTabChange(t: Tab) {
@@ -196,9 +218,6 @@ export default function StarredClient() {
         <VirtualProblemList
           flatItems={problemFlat}
           onUnstar={unstarProblem}
-          hasMore={pHasMore}
-          loadingMore={pLoading}
-          onLoadMore={() => loadProblems(pCursor)}
         />
       )}
     </div>
@@ -301,15 +320,11 @@ function VirtualQuestionList({ flatItems, onUnstar, showOptions, hasMore, loadin
 
 // ── Virtual problem list (window scroll) ─────────────────────────────────────
 
-function VirtualProblemList({ flatItems, onUnstar, hasMore, loadingMore, onLoadMore }: {
+function VirtualProblemList({ flatItems, onUnstar }: {
   flatItems: ProblemFlatItem[]
   onUnstar: (topicSlug: string, problemId: string) => void
-  hasMore: boolean
-  loadingMore: boolean
-  onLoadMore: () => void
 }) {
   const listRef = useRef<HTMLDivElement>(null)
-  const loadingMoreRef = useRef(false)
 
   const virtualizer = useWindowVirtualizer({
     count: flatItems.length,
@@ -319,16 +334,6 @@ function VirtualProblemList({ flatItems, onUnstar, hasMore, loadingMore, onLoadM
   })
 
   const virtualItems = virtualizer.getVirtualItems()
-  useEffect(() => {
-    if (!virtualItems.length || !hasMore || loadingMore || loadingMoreRef.current) return
-    const lastVisible = virtualItems[virtualItems.length - 1]
-    if (lastVisible.index >= flatItems.length - 5) {
-      loadingMoreRef.current = true
-      onLoadMore()
-    }
-  }, [virtualItems, flatItems.length, hasMore, loadingMore])
-
-  useEffect(() => { loadingMoreRef.current = false }, [loadingMore])
 
   return (
     <div ref={listRef}>
@@ -361,12 +366,9 @@ function VirtualProblemList({ flatItems, onUnstar, hasMore, loadingMore, onLoadM
           )
         })}
       </div>
-      {loadingMore && (
-        <div className="text-center py-3 text-xs text-gray-600 animate-pulse">載入中...</div>
-      )}
-      {!hasMore && flatItems.length > 0 && (
-        <div className="text-center py-3 text-xs text-gray-700">已顯示全部 {flatItems.filter(i => i.kind === 'card').length} 題</div>
-      )}
+      <div className="text-center py-3 text-xs text-gray-700">
+        共 {flatItems.filter(i => i.kind === 'card').length} 題
+      </div>
     </div>
   )
 }
@@ -507,6 +509,8 @@ function ProblemCard({ p, onUnstar }: { p: StarredProblemItem; onUnstar: (s: str
       <div className="flex items-center gap-2 shrink-0">
         <Link
           href={`/practice/${p.topicSlug}/${p.problemId}?from=starred`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 hover:border-blue-600 px-2.5 py-1.5 rounded-lg transition"
         >
           前往練習

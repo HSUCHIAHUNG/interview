@@ -1,4 +1,4 @@
-import { eq, sql, and, inArray, gte, gt, asc } from 'drizzle-orm'
+import { eq, sql, and, inArray, gte, gt, asc, desc } from 'drizzle-orm'
 import { db } from './index'
 import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections, userWeeklyGoals, userQuestionLog, userStarredQuestions, userStarredProblems, userWeekNotes } from './schema'
 import type { TopicMeta, Question } from '@/lib/topics'
@@ -610,31 +610,16 @@ export type StarredProblemRow = { topicSlug: string; problemId: string }
 
 export async function getStarredProblemRows(
   userId: string,
-  cursor?: number,
-  limit = 30,
-): Promise<{ items: StarredProblemRow[]; nextCursor: number | null }> {
+): Promise<StarredProblemRow[]> {
   const rows = await db
     .select({
-      starredId: userStarredProblems.id,
       topicSlug: userStarredProblems.topicSlug,
       problemId: userStarredProblems.problemId,
     })
     .from(userStarredProblems)
-    .where(and(
-      eq(userStarredProblems.userId, userId),
-      cursor ? gt(userStarredProblems.id, cursor) : undefined,
-    ))
-    .orderBy(asc(userStarredProblems.id))
-    .limit(limit + 1)
-
-  const hasMore = rows.length > limit
-  const batch = hasMore ? rows.slice(0, limit) : rows
-  const nextCursor = hasMore ? batch[batch.length - 1].starredId : null
-
-  return {
-    items: batch.map(r => ({ topicSlug: r.topicSlug, problemId: r.problemId })),
-    nextCursor,
-  }
+    .where(eq(userStarredProblems.userId, userId))
+    .orderBy(desc(userStarredProblems.id))
+  return rows
 }
 
 export async function getAllStarredProblemRows(userId: string): Promise<StarredProblemRow[]> {
@@ -642,7 +627,7 @@ export async function getAllStarredProblemRows(userId: string): Promise<StarredP
     .select({ topicSlug: userStarredProblems.topicSlug, problemId: userStarredProblems.problemId })
     .from(userStarredProblems)
     .where(eq(userStarredProblems.userId, userId))
-    .orderBy(asc(userStarredProblems.id))
+    .orderBy(desc(userStarredProblems.id))
   return rows
 }
 

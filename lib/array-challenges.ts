@@ -1654,6 +1654,47 @@ let safeUser
           { label: 'users[0].role 仍為 "user"（安全修改，原物件不變）', test: `return users[0].role === 'user'` },
         ],
       },
+      {
+        id: 'find-undefined',
+        title: '找不到時回傳 undefined',
+        difficulty: 'easy',
+        description: `\`find()\` 找不到符合條件的元素時，回傳 \`undefined\`，不是 \`-1\`、\`null\` 或空陣列。
+
+請：
+1. 從 \`products\` 中找出 \`id === 99\` 的商品，存到 \`notFound\`（不存在，應為 undefined）
+2. 用 optional chaining \`notFound?.name\` 取得名稱，存到 \`safeName\`（應為 undefined）
+3. 提供預設值：若找不到就用 \`'未知商品'\`，存到 \`displayName\``,
+        examples: [
+          {
+            input: `products 中沒有 id === 99 的商品`,
+            output: `notFound === undefined，safeName === undefined，displayName === '未知商品'`,
+          },
+        ],
+        initialCode: `const products = [
+  { id: 1, name: 'Keyboard', price: 299 },
+  { id: 2, name: 'Mouse',    price: 99  },
+  { id: 3, name: 'Monitor',  price: 999 },
+]
+
+// TODO: 找 id === 99（不存在）
+let notFound
+
+// TODO: 用 optional chaining 取 name（找不到就是 undefined）
+let safeName
+
+// TODO: 提供預設值（找不到時顯示 '未知商品'）
+let displayName
+`,
+        testCases: [
+          { label: 'notFound 應為 undefined', test: `return notFound === undefined` },
+          { label: 'safeName 應為 undefined（optional chaining 不報錯）', test: `return safeName === undefined` },
+          { label: 'displayName 應為 "未知商品"', test: `return displayName === '未知商品'` },
+          {
+            label: '找得到時 optional chaining 正常回傳值',
+            test: `const p = [{id:1, name:'A'}]; const r = p.find(x => x.id === 1); return r?.name === 'A'`,
+          },
+        ],
+      },
     ],
   },
   {
@@ -2317,6 +2358,49 @@ const buggyNames = users.map(u => {
           { label: 'activeNames 應有 2 個元素', test: `return activeNames && activeNames.length === 2` },
           { label: 'buggyNames 應有 4 個元素（map 等長）', test: `return buggyNames.length === 4` },
           { label: 'buggyNames[1] 應為 undefined（錯誤示範）', test: `return buggyNames[1] === undefined` },
+        ],
+      },
+      {
+        id: 'filter-empty-result',
+        title: '篩選無結果時回傳空陣列',
+        difficulty: 'easy',
+        description: `\`filter()\` 找不到任何符合條件的元素時，回傳**空陣列 \`[]\`**，不是 \`null\`、\`undefined\` 或 \`-1\`。
+
+這和 \`find()\` 不同（find 找不到回傳 undefined）。空陣列仍可以安全地繼續鏈接操作。
+
+請：
+1. 篩選出 \`score > 90\` 的學生，存到 \`topStudents\`（沒有人符合，應為空陣列）
+2. 驗證 \`topStudents.length === 0\`，存到 \`isEmpty\`
+3. 驗證 \`Array.isArray(topStudents)\`，存到 \`isArray\``,
+        examples: [
+          {
+            input: `students 中沒有人 score > 90`,
+            output: `topStudents === []，isEmpty === true，isArray === true`,
+          },
+        ],
+        initialCode: `const students = [
+  { name: 'Alice', score: 72 },
+  { name: 'Bob',   score: 65 },
+  { name: 'Carol', score: 88 },
+]
+
+// TODO: 篩選 score > 90 的學生（沒有人符合）
+let topStudents
+
+// TODO: 確認長度為 0，存到 isEmpty（boolean）
+let isEmpty
+
+// TODO: 確認型別是陣列，存到 isArray（boolean）
+let isArray
+`,
+        testCases: [
+          { label: 'topStudents 應為空陣列', test: `return Array.isArray(topStudents) && topStudents.length === 0` },
+          { label: 'isEmpty 應為 true', test: `return isEmpty === true` },
+          { label: 'isArray 應為 true（不是 null 或 undefined）', test: `return isArray === true` },
+          {
+            label: '空陣列可以安全做 .map()（不報錯）',
+            test: `return Array.isArray(topStudents.map(s => s.name)) && topStudents.map(s => s.name).length === 0`,
+          },
         ],
       },
     ],

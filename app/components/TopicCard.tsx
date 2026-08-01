@@ -182,6 +182,8 @@ export default function TopicCard({
         {hasPractice && (
           <Link
             href={`/practice/${slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex-1 text-center bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2"
           >
             實作練習

@@ -72,6 +72,8 @@ export default async function NotesPage({
           {isPractice ? (
             <Link
               href={`/practice/${topic}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex-1 text-center bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold py-3 rounded-xl transition"
             >
               實作練習
