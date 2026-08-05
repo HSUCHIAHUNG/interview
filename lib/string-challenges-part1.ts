@@ -167,6 +167,41 @@ let segment
           },
         ],
       },
+      {
+        id: 'from-index',
+        title: '重複搜尋：找出第二次出現的位置',
+        difficulty: 'medium',
+        description: `文字編輯器的「全部取代」功能需要逐一找出關鍵字的每次出現位置。
+
+給定字串 \`text\`，請：
+1. 用 \`indexOf('apple')\` 找到第一次出現的位置，存到 \`first\`。
+2. 以 \`first + 1\` 作為第二參數，再次呼叫 \`indexOf('apple', first + 1)\` 找第二次出現的位置，存到 \`second\`。`,
+        examples: [
+          {
+            input: `text = 'apple, orange, apple, grape'`,
+            output: `first === 0，second === 15`,
+          },
+        ],
+        constraints: [
+          '必須使用 indexOf 的第二個參數找第二次出現位置',
+        ],
+        initialCode: `const text = 'apple, orange, apple, grape'
+
+// TODO: 找第一次出現 'apple' 的位置
+let first
+
+// TODO: 從 first + 1 開始，找第二次出現的位置
+let second
+`,
+        testCases: [
+          { label: 'first 應為 0', test: `return first === 0` },
+          { label: 'second 應為 15', test: `return second === 15` },
+          {
+            label: '若只出現一次，第二次應為 -1',
+            test: `const s = 'apple, orange, grape'; const f = s.indexOf('apple'); return s.indexOf('apple', f + 1) === -1`,
+          },
+        ],
+      },
     ],
   },
 
@@ -354,6 +389,72 @@ let reactJobs
           {
             label: '"Hello@World9" 應全部通過',
             test: `const r = checkPassword('Hello@World9'); return r.isValid === true`,
+          },
+        ],
+      },
+      {
+        id: 'from-index',
+        title: '搜尋紀錄分析：跳過已處理區段',
+        difficulty: 'medium',
+        description: `日誌分析系統每次只處理後半段的新日誌，需要從指定位置開始搜尋是否還有錯誤。
+
+給定日誌字串 \`log\`，
+1. 使用 \`includes('ERROR', 22)\` 判斷從索引 22 開始是否還有 \`'ERROR'\`，存到 \`hasMore\`。
+2. 使用 \`includes('ERROR', 45)\` 判斷從索引 45 開始是否還有 \`'ERROR'\`，存到 \`noMore\`。`,
+        examples: [
+          {
+            input: `log = 'ERROR: 404, INFO: ok, ERROR: 500, INFO: done'`,
+            output: `hasMore === true，noMore === false`,
+          },
+        ],
+        initialCode: `const log = 'ERROR: 404, INFO: ok, ERROR: 500, INFO: done'
+
+// TODO: 從索引 22 開始判斷是否有 'ERROR'，存到 hasMore
+let hasMore
+
+// TODO: 從索引 45 開始判斷是否有 'ERROR'，存到 noMore
+let noMore
+`,
+        testCases: [
+          { label: 'hasMore 應為 true', test: `return hasMore === true` },
+          { label: 'noMore 應為 false', test: `return noMore === false` },
+          { label: 'hasMore 應是 boolean', test: `return typeof hasMore === 'boolean'` },
+          {
+            label: '從索引 5 開始仍能找到 ERROR',
+            test: `const s = 'ERROR: 404, INFO: ok, ERROR: 500'; return s.includes('ERROR', 5) === true`,
+          },
+        ],
+      },
+      {
+        id: 'case-sensitive',
+        title: '帳號驗證：大小寫敏感比對',
+        difficulty: 'medium',
+        description: `使用者認證系統的帳號比對**嚴格區分大小寫**，\`'Admin'\` 和 \`'admin'\` 是完全不同的字串。
+
+給定帳號 \`account\`，
+1. 用 \`includes()\` 判斷是否包含 \`'Admin'\`（大寫 A），存到 \`hasAdmin\`。
+2. 用 \`includes()\` 判斷是否包含 \`'admin'\`（小寫 a），存到 \`hasLower\`。`,
+        examples: [
+          {
+            input: `account = 'AdminUser'`,
+            output: `hasAdmin === true，hasLower === false`,
+          },
+        ],
+        initialCode: `const account = 'AdminUser'
+
+// TODO: 判斷是否包含 'Admin'（大寫 A），存到 hasAdmin
+let hasAdmin
+
+// TODO: 判斷是否包含 'admin'（小寫 a），存到 hasLower
+let hasLower
+`,
+        testCases: [
+          { label: 'hasAdmin 應為 true', test: `return hasAdmin === true` },
+          { label: 'hasLower 應為 false', test: `return hasLower === false` },
+          { label: 'hasAdmin 應是 boolean', test: `return typeof hasAdmin === 'boolean'` },
+          {
+            label: '小寫開頭無法找到',
+            test: `return 'AdminUser'.includes('admin') === false`,
           },
         ],
       },
@@ -549,6 +650,78 @@ let isVideo
           },
         ],
       },
+      {
+        id: 'startswith-position',
+        title: '路由解析：從指定位置判斷路徑前綴',
+        difficulty: 'medium',
+        description: `API 路由器需要確認去掉統一前綴 \`'/api'\`（4個字元）後，剩餘路徑是否以 \`'/users'\` 開頭。
+
+給定路徑 \`apiPath\`，使用 \`startsWith('/users', 4)\` 從索引 4 開始判斷，將結果存到 \`isUsersRoute\`。
+
+接著用 \`startsWith('/admin', 4)\` 判斷是否為 admin 路由，存到 \`isAdminRoute\`。`,
+        examples: [
+          {
+            input: `apiPath = '/api/users/profile'`,
+            output: `isUsersRoute === true，isAdminRoute === false`,
+          },
+        ],
+        initialCode: `const apiPath = '/api/users/profile'
+
+// TODO: 從索引 4 開始判斷是否以 '/users' 開頭，存到 isUsersRoute
+let isUsersRoute
+
+// TODO: 從索引 4 開始判斷是否以 '/admin' 開頭，存到 isAdminRoute
+let isAdminRoute
+`,
+        testCases: [
+          { label: 'isUsersRoute 應為 true', test: `return isUsersRoute === true` },
+          { label: 'isAdminRoute 應為 false', test: `return isAdminRoute === false` },
+          {
+            label: '若不用第二參數，整個字串不以 /users 開頭',
+            test: `return '/api/users/profile'.startsWith('/users') === false`,
+          },
+          {
+            label: '第二參數讓搜尋從正確位置開始',
+            test: `return '/api/admin/settings'.startsWith('/admin', 4) === true`,
+          },
+        ],
+      },
+      {
+        id: 'endswith-length',
+        title: '版本號驗證：只看主版本部分的結尾',
+        difficulty: 'medium',
+        description: `版本號格式為 \`'v2.3.1-beta'\`，需要確認**去掉後綴標籤前**（只看前 6 個字元 \`'v2.3.1'\`）是否以 \`'.1'\` 結尾。
+
+給定版本字串 \`version\`，
+1. 使用 \`endsWith('.1', 6)\` 只看前 6 個字元，判斷是否以 \`'.1'\` 結尾，存到 \`isPatch1\`。
+2. 直接呼叫 \`endsWith('.1')\` 判斷完整字串是否以 \`'.1'\` 結尾，存到 \`fullEnds\`。`,
+        examples: [
+          {
+            input: `version = 'v2.3.1-beta'`,
+            output: `isPatch1 === true，fullEnds === false`,
+          },
+        ],
+        initialCode: `const version = 'v2.3.1-beta'
+
+// TODO: 只看前 6 個字元，判斷是否以 '.1' 結尾，存到 isPatch1
+let isPatch1
+
+// TODO: 完整字串是否以 '.1' 結尾，存到 fullEnds
+let fullEnds
+`,
+        testCases: [
+          { label: 'isPatch1 應為 true', test: `return isPatch1 === true` },
+          { label: 'fullEnds 應為 false', test: `return fullEnds === false` },
+          {
+            label: '第二參數限制了搜尋範圍',
+            test: `return 'v2.3.1-beta'.endsWith('.1', 6) === true`,
+          },
+          {
+            label: '完整字串以 -beta 結尾',
+            test: `return 'v2.3.1-beta'.endsWith('-beta') === true`,
+          },
+        ],
+      },
     ],
   },
 
@@ -715,6 +888,48 @@ let maskedCard
           {
             label: '空字串應直接回傳空字串',
             test: `return truncate('', 10) === ''`,
+          },
+        ],
+      },
+      {
+        id: 'start-greater',
+        title: 'slice vs substring：start 大於 end 的差異',
+        difficulty: 'medium',
+        description: `\`slice()\` 和 \`substring()\` 在 start 大於 end 時行為**完全不同**：
+- \`slice(start, end)\`：start > end 時回傳**空字串** \`''\`
+- \`substring(start, end)\`：start > end 時會**自動交換**兩個參數
+
+給定字串 \`str\`，
+1. 呼叫 \`str.slice(7, 2)\`，存到 \`sliceResult\`。
+2. 呼叫 \`str.substring(7, 2)\`，存到 \`substringResult\`。`,
+        examples: [
+          {
+            input: `str = 'Hello, World!'`,
+            output: `sliceResult === ''（空字串）`,
+          },
+          {
+            input: `str = 'Hello, World!'`,
+            output: `substringResult === 'llo, '（等同 substring(2, 7)）`,
+          },
+        ],
+        initialCode: `const str = 'Hello, World!'
+
+// TODO: 呼叫 slice(7, 2)，存到 sliceResult
+let sliceResult
+
+// TODO: 呼叫 substring(7, 2)，存到 substringResult
+let substringResult
+`,
+        testCases: [
+          { label: 'sliceResult 應為空字串', test: `return sliceResult === ''` },
+          { label: 'substringResult 應為 "llo, "', test: `return substringResult === 'llo, '` },
+          {
+            label: 'slice start > end 永遠回傳空字串',
+            test: `return 'abcdef'.slice(4, 1) === ''`,
+          },
+          {
+            label: 'substring 自動交換參數',
+            test: `return 'abcdef'.substring(4, 1) === 'bcd'`,
           },
         ],
       },
