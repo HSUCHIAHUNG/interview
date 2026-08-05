@@ -76,6 +76,8 @@ export default async function PracticeListPage({ params }: Props) {
               <Link
                 key={problem.id}
                 href={`/practice/${slug}/${problem.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className={`flex items-center gap-4 p-4 rounded-xl border transition group ${
                   done
                     ? 'bg-gray-900/50 border-emerald-800/50 hover:border-emerald-700'

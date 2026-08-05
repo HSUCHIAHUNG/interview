@@ -507,6 +507,8 @@ function ProblemCard({ p, onUnstar }: { p: StarredProblemItem; onUnstar: (s: str
       <div className="flex items-center gap-2 shrink-0">
         <Link
           href={`/practice/${p.topicSlug}/${p.problemId}?from=starred`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 hover:border-blue-600 px-2.5 py-1.5 rounded-lg transition"
         >
           前往練習
