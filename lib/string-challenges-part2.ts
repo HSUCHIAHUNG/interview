@@ -273,6 +273,38 @@ let reversed
           { label: 'reversed 單詞數應與原句相同', test: `return reversed.split(' ').length === original.split(' ').length` },
         ],
       },
+      {
+        id: 'emoji',
+        title: '社群平台：正確計算 emoji 字數',
+        difficulty: 'medium',
+        description: `
+社群平台顯示訊息字數時，一個 emoji 應計為 1 個字元，
+但 \`split('')\` 把每個 emoji 拆成多個字碼單元（code unit），計算結果錯誤。
+
+正確做法是使用 \`Spread\` 運算子 \`[...str]\` 或 \`Array.from(str)\`，
+它們以 **Unicode 碼位（code point）** 為單位迭代，每個 emoji 算 1 個。
+
+給定字串 \`message\`，
+1. 用 \`split('')\` 拆分並取長度，存到 \`wrongCount\`（結果不正確）。
+2. 用 \`[...message].length\` 或 \`Array.from(message).length\` 取得正確長度，存到 \`correctCount\`。
+`,
+        examples: [{ input: "message = '🎉🎊🎈'", output: "wrongCount === 6，correctCount === 3（每個 emoji 佔 2 個 code unit）" }],
+        constraints: ['correctCount 必須使用 Spread 或 Array.from，不可使用 split("")'],
+        initialCode: `const message = '🎉🎊🎈'
+
+// TODO: 用 split('') 取長度（錯誤示範），存到 wrongCount
+let wrongCount
+
+// TODO: 用 [...message].length 或 Array.from(message).length，存到 correctCount
+let correctCount
+`,
+        testCases: [
+          { label: 'wrongCount 應為 6（split 的錯誤結果）', test: "return wrongCount === 6" },
+          { label: 'correctCount 應為 3（每個 emoji 算一個）', test: "return correctCount === 3" },
+          { label: '驗證 Spread 方法正確', test: "return [...'🎉🎊🎈'].length === 3" },
+          { label: '驗證 Array.from 方法正確', test: "return Array.from('🎉🎊🎈').length === 3" },
+        ],
+      },
     ],
   },
 
@@ -560,6 +592,43 @@ let cleanLog
             label: 'cleanLog 應有 3 行',
             test: `return cleanLog.split('\\n').length === 3`,
           },
+        ],
+      },
+      {
+        id: 'middle-spaces',
+        title: '資料清理：去除字串中間的多餘空白',
+        difficulty: 'medium',
+        description: `\`trim()\` 只能去除**前後**的空白，無法處理字串**中間**的多餘空格。
+若要壓縮中間連續空白為單一空格，需搭配 \`replace()\`：
+- \`str.replace(/\\s+/g, ' ')\`：將連續空白壓縮成一個空格
+- \`str.trim().replace(/\\s+/g, ' ')\`：同時去除前後空白並壓縮中間
+
+給定字串 \`raw\`，
+1. 先用 \`trim()\` 去除前後空白，再用 \`.replace(/\\s+/g, ' ')\` 壓縮中間連續空白，存到 \`cleaned\`。
+2. 用 \`.replace(/\\s/g, '')\` 移除**所有**空白（包含中間），存到 \`noSpaces\`。`,
+        examples: [
+          {
+            input: `raw = '  Hello   World  '`,
+            output: `cleaned === 'Hello World'，noSpaces === 'HelloWorld'`,
+          },
+        ],
+        constraints: [
+          'cleaned 必須使用 trim() 搭配 replace(/\\s+/g, \' \')',
+          'noSpaces 使用 replace(/\\s/g, \'\')',
+        ],
+        initialCode: `const raw = '  Hello   World  '
+
+// TODO: trim 前後空白並壓縮中間連續空白為單一空格，存到 cleaned
+let cleaned
+
+// TODO: 移除所有空白（包含中間），存到 noSpaces
+let noSpaces
+`,
+        testCases: [
+          { label: 'cleaned 應為 "Hello World"', test: `return cleaned === 'Hello World'` },
+          { label: 'noSpaces 應為 "HelloWorld"', test: `return noSpaces === 'HelloWorld'` },
+          { label: '驗證 trim 不會處理中間空白', test: `return '  a  b  '.trim() === 'a  b'` },
+          { label: '驗證 replace 壓縮中間空白', test: `return '  a  b  '.trim().replace(/\\s+/g, ' ') === 'a b'` },
         ],
       },
     ],

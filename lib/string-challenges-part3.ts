@@ -190,6 +190,97 @@ let result
           },
         ],
       },
+      {
+        id: 'first-only',
+        title: 'replace vs replaceAll：只換第一個的差異',
+        difficulty: 'easy',
+        description: `\`replace()\` **只替換第一次**出現的子字串，\`replaceAll()\` 替換**所有**出現。
+
+給定字串 \`sentence\`（含有多個 \`'cat'\`），
+1. 用 \`replace('cat', 'dog')\` 只替換第一個，存到 \`firstOnly\`。
+2. 用 \`replaceAll('cat', 'dog')\` 替換全部，存到 \`allReplaced\`。`,
+        examples: [
+          {
+            input: `sentence = 'I have a cat. The cat is cute. My cat is orange.'`,
+            output: `firstOnly === 'I have a dog. The cat is cute. My cat is orange.'`,
+          },
+          {
+            input: `sentence = 'I have a cat. The cat is cute. My cat is orange.'`,
+            output: `allReplaced === 'I have a dog. The dog is cute. My dog is orange.'`,
+          },
+        ],
+        initialCode: `const sentence = 'I have a cat. The cat is cute. My cat is orange.'
+
+// TODO: 只替換第一個 'cat'，存到 firstOnly
+let firstOnly
+
+// TODO: 替換全部 'cat'，存到 allReplaced
+let allReplaced
+`,
+        testCases: [
+          { label: 'firstOnly 應只換第一個 cat', test: `return firstOnly === 'I have a dog. The cat is cute. My cat is orange.'` },
+          { label: 'allReplaced 應換掉所有 cat', test: `return allReplaced === 'I have a dog. The dog is cute. My dog is orange.'` },
+          { label: 'replace 不改原字串', test: `const s = 'cat cat'; s.replace('cat', 'dog'); return s === 'cat cat'` },
+        ],
+      },
+      {
+        id: 'delete-char',
+        title: '字元刪除：用空字串取代來移除指定字元',
+        difficulty: 'easy',
+        description: `將替換目標改成空字串 \`''\`，就能達到**刪除**的效果。
+
+給定貨幣字串 \`price\`（含有 \`$\` 與 \`,\`），
+1. 用 \`replaceAll('$', '')\` 移除所有貨幣符號，存到 \`noSign\`。
+2. 再用 \`replaceAll(',', '')\` 移除所有千分位逗號，存到 \`cleaned\`（純數字字串）。`,
+        examples: [
+          {
+            input: `price = '$1,234,567'`,
+            output: `noSign === '1,234,567'，cleaned === '1234567'`,
+          },
+        ],
+        initialCode: `const price = '$1,234,567'
+
+// TODO: 移除 $ 符號，存到 noSign
+let noSign
+
+// TODO: 在 noSign 基礎上再移除所有 , 存到 cleaned
+let cleaned
+`,
+        testCases: [
+          { label: 'noSign 應為 "1,234,567"', test: `return noSign === '1,234,567'` },
+          { label: 'cleaned 應為 "1234567"', test: `return cleaned === '1234567'` },
+          { label: 'cleaned 轉數字應為 1234567', test: `return Number(cleaned) === 1234567` },
+        ],
+      },
+      {
+        id: 'word-swap',
+        title: '文案替換：多欄位樣板內容更新',
+        difficulty: 'easy',
+        description: `電商平台在促銷活動結束後，需要把所有文案中的 \`'特價'\` 換成 \`'原價'\`，\`'立即搶購'\` 換成 \`'瀏覽商品'\`。
+
+給定文案 \`banner\`，
+1. 用 \`replaceAll('特價', '原價')\` 換掉所有「特價」，存到 \`step1\`。
+2. 在 \`step1\` 上再用 \`replaceAll('立即搶購', '瀏覽商品')\`，存到 \`updated\`。`,
+        examples: [
+          {
+            input: `banner = '特價商品！特價限時優惠，立即搶購！立即搶購不後悔'`,
+            output: `updated === '原價商品！原價限時優惠，瀏覽商品！瀏覽商品不後悔'`,
+          },
+        ],
+        initialCode: `const banner = '特價商品！特價限時優惠，立即搶購！立即搶購不後悔'
+
+// TODO: 將所有 '特價' 換成 '原價'，存到 step1
+let step1
+
+// TODO: 在 step1 上將 '立即搶購' 換成 '瀏覽商品'，存到 updated
+let updated
+`,
+        testCases: [
+          { label: 'step1 應替換所有特價', test: `return step1 === '原價商品！原價限時優惠，立即搶購！立即搶購不後悔'` },
+          { label: 'updated 應同時替換兩者', test: `return updated === '原價商品！原價限時優惠，瀏覽商品！瀏覽商品不後悔'` },
+          { label: 'replaceAll 才能換掉全部', test: `return '特價 特價'.replaceAll('特價', '原價') === '原價 原價'` },
+        ],
+      },
     ],
   },
 
@@ -365,6 +456,44 @@ function maskCard(cardNumber) {
           },
         ],
       },
+      {
+        id: 'default-space',
+        title: '文字對齊：不傳 fillString 預設補空格',
+        difficulty: 'medium',
+        description: `\`padStart()\` 和 \`padEnd()\` 的第二個參數 \`fillString\` 是**選填**的，
+若省略不傳，預設補**空格** \`' '\`（而非 '0' 或其他字元）。
+
+給定品項名稱 \`item\` 和價格 \`price\`，
+1. 用 \`item.padEnd(20)\`（只傳長度，不傳 fillString）將名稱補到 20 個字元，存到 \`paddedItem\`。
+2. 用 \`price.padStart(8)\`（只傳長度）將價格補到 8 個字元，存到 \`paddedPrice\`。
+
+這樣可以在純文字環境（如 console、log）中做出對齊效果。`,
+        examples: [
+          {
+            input: `item = 'Apple'，price = '99'`,
+            output: `paddedItem === 'Apple               '（長度 20，右側補空格）`,
+          },
+          {
+            input: `item = 'Apple'，price = '99'`,
+            output: `paddedPrice === '      99'（長度 8，左側補空格）`,
+          },
+        ],
+        initialCode: `const item = 'Apple'
+const price = '99'
+
+// TODO: 用 padEnd(20) 將 item 補到 20 個字元（不傳 fillString）
+let paddedItem
+
+// TODO: 用 padStart(8) 將 price 補到 8 個字元（不傳 fillString）
+let paddedPrice
+`,
+        testCases: [
+          { label: 'paddedItem 長度應為 20', test: `return paddedItem.length === 20` },
+          { label: 'paddedItem 應以空格填充右側', test: `return paddedItem === 'Apple               '` },
+          { label: 'paddedPrice 長度應為 8', test: `return paddedPrice.length === 8` },
+          { label: 'paddedPrice 應以空格填充左側', test: `return paddedPrice === '      99'` },
+        ],
+      },
     ],
   },
 
@@ -498,6 +627,81 @@ function renderStars(score) {
             label: '回傳字串長度應固定為 5',
             test: `return renderStars(2).length === 5`,
           },
+        ],
+      },
+      {
+        id: 'decimal-floor',
+        title: 'repeat 小數參數：自動無條件捨去',
+        difficulty: 'medium',
+        description: `\`repeat(count)\` 的 \`count\` 若為**小數**，會自動**無條件捨去（floor）**，不會四捨五入，也不會報錯。
+
+例如：
+- \`'a'.repeat(2.9)\` → \`'aa'\`（floor(2.9) = 2）
+- \`'a'.repeat(2.1)\` → \`'aa'\`（floor(2.1) = 2）
+
+給定字串 \`char\`，
+1. 呼叫 \`char.repeat(3.7)\`，存到 \`result1\`。
+2. 呼叫 \`char.repeat(1.1)\`，存到 \`result2\`。`,
+        examples: [
+          {
+            input: `char = '★'`,
+            output: `result1 === '★★★'（floor(3.7) = 3）`,
+          },
+          {
+            input: `char = '★'`,
+            output: `result2 === '★'（floor(1.1) = 1）`,
+          },
+        ],
+        initialCode: `const char = '★'
+
+// TODO: repeat(3.7)，存到 result1
+let result1
+
+// TODO: repeat(1.1)，存到 result2
+let result2
+`,
+        testCases: [
+          { label: 'result1 應為 "★★★"（小數自動 floor）', test: `return result1 === '★★★'` },
+          { label: 'result2 應為 "★"', test: `return result2 === '★'` },
+          { label: '驗證 2.9 不會四捨五入成 3 次', test: `return 'a'.repeat(2.9) === 'aa'` },
+          { label: '驗證 2.1 等同 2', test: `return 'a'.repeat(2.1) === 'aa'` },
+        ],
+      },
+      {
+        id: 'nan-zero',
+        title: 'repeat 特殊值：NaN 視為 0，回傳空字串',
+        difficulty: 'medium',
+        description: `\`repeat()\` 對特殊 \`count\` 值的行為：
+- \`count\` 為 **NaN** → 視為 **0**，回傳空字串 \`''\`
+- \`count\` 為 **0** → 回傳空字串 \`''\`
+- \`count\` 為**負數**或 **Infinity** → 拋出 \`RangeError\`
+
+給定字串 \`str\`，
+1. 呼叫 \`str.repeat(NaN)\`，存到 \`fromNaN\`。
+2. 呼叫 \`str.repeat(0)\`，存到 \`fromZero\`。
+3. 判斷兩者是否相等（boolean），存到 \`areSame\`。`,
+        examples: [
+          {
+            input: `str = 'hello'`,
+            output: `fromNaN === ''，fromZero === ''，areSame === true`,
+          },
+        ],
+        initialCode: `const str = 'hello'
+
+// TODO: repeat(NaN)，存到 fromNaN
+let fromNaN
+
+// TODO: repeat(0)，存到 fromZero
+let fromZero
+
+// TODO: 判斷兩者是否相等，存到 areSame（boolean）
+let areSame
+`,
+        testCases: [
+          { label: 'fromNaN 應為空字串', test: `return fromNaN === ''` },
+          { label: 'fromZero 應為空字串', test: `return fromZero === ''` },
+          { label: 'areSame 應為 true', test: `return areSame === true` },
+          { label: '驗證 NaN 行為', test: `return 'abc'.repeat(NaN) === ''` },
         ],
       },
     ],
@@ -848,6 +1052,134 @@ function formatCurrency(amount, currency) {
           {
             label: 'formatCurrency(0, "USD") 應回傳 "$0.00"',
             test: `return formatCurrency(0, 'USD') === '$0.00'`,
+          },
+        ],
+      },
+    ],
+  },
+
+  // ─── lastIndexOf() ───────────────────────────────────────────────────────
+  {
+    slug: 'str-lastindexof',
+    methodName: 'lastIndexOf()',
+    title: 'String.lastIndexOf()',
+    description: '從字串末尾往前搜尋，找出子字串最後一次出現的索引。',
+    subCategory: '搜尋與判斷',
+    difficulty: 'medium',
+    notes: {
+      title: 'lastIndexOf()',
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`str.lastIndexOf(searchValue[, fromIndex])\`
+
+- 回傳：找到時回傳**索引**（number），找不到回傳 **-1**。
+- \`fromIndex\`：從這個位置**往前**搜尋，預設為 \`str.length - 1\`（從最後開始）。
+- 區分大小寫。`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+const s = 'abcabc'
+
+s.lastIndexOf('a')      // 3（最後一次出現）
+s.lastIndexOf('a', 2)   // 0（從索引 2 往前找）
+s.lastIndexOf('a', 0)   // 0
+s.lastIndexOf('x')      // -1（找不到）
+
+// 常見用途：取路徑最後一個 / 之後的部分
+const path = '/users/admin/profile'
+const last = path.lastIndexOf('/')  // 12
+path.slice(last + 1)                // 'profile'
+\`\`\``,
+        },
+        {
+          heading: '與 indexOf 的比較',
+          content: `- \`indexOf\`：從頭往後找，回傳**第一次**出現的位置。
+- \`lastIndexOf\`：從尾往前找，回傳**最後一次**出現的位置。
+- \`fromIndex\` 在 \`lastIndexOf\` 中是往前搜尋的起點，與 \`indexOf\` 的往後搜尋方向**相反**。`,
+        },
+      ],
+    },
+    keyPoints: [
+      'lastIndexOf 從字串末尾往前找，回傳最後一次出現的索引，找不到回傳 -1。',
+      '第二個參數 fromIndex 指定從哪個索引位置「往前」搜尋，預設從字串末尾開始。',
+      '與 indexOf 的差異：lastIndexOf 找最後一次，indexOf 找第一次。',
+      '常用於從路徑字串取得最後一個斜線之後的段落。',
+      '同樣區分大小寫，搜尋時大小寫必須完全一致。',
+    ],
+    problems: [
+      {
+        id: 'basic',
+        title: '版本紀錄：找出最後一次發布的版本號',
+        difficulty: 'easy',
+        description: `部署日誌記錄了多次版本發布，需要找出**最後一次**發布版本號的起始位置。
+
+給定日誌字串 \`deployLog\`，
+1. 使用 \`lastIndexOf('v')\` 找出最後一個版本號前綴 \`'v'\` 的索引，存到 \`lastV\`。
+2. 使用 \`slice(lastV)\` 截取最後一個版本號到字串結尾，存到 \`lastVersion\`。`,
+        examples: [
+          {
+            input: `deployLog = 'deployed v1.0.0, patched v1.0.1, upgraded v2.0.0'`,
+            output: `lastV === 48，lastVersion === 'v2.0.0'`,
+          },
+        ],
+        initialCode: `const deployLog = 'deployed v1.0.0, patched v1.0.1, upgraded v2.0.0'
+
+// TODO: 找出最後一個 'v' 的索引，存到 lastV
+let lastV
+
+// TODO: 用 slice 截取最後一個版本號，存到 lastVersion
+let lastVersion
+`,
+        testCases: [
+          { label: 'lastV 應為 48', test: `return lastV === 48` },
+          { label: 'lastVersion 應為 "v2.0.0"', test: `return lastVersion === 'v2.0.0'` },
+          {
+            label: '能正確處理只有一個版本的情況',
+            test: `const s = 'deployed v1.0.0'; const lv = s.lastIndexOf('v'); return s.slice(lv) === 'v1.0.0'`,
+          },
+        ],
+      },
+      {
+        id: 'from-index',
+        title: '日誌分析：只搜尋前段紀錄的最後一筆錯誤',
+        difficulty: 'medium',
+        description: `錯誤分析工具需要在**只看前 N 個字元**的範圍內，找出最後一筆 \`'ERROR'\` 的位置。
+
+\`lastIndexOf(searchValue, fromIndex)\` 的第二參數指定從哪個索引**往前**搜尋，
+所以 \`log.lastIndexOf('ERROR', 30)\` 等於「在前 31 個字元內，找最後一次出現的 ERROR」。
+
+給定日誌 \`log\`，
+1. 用 \`lastIndexOf('ERROR', 30)\` 在前 31 個字元內找最後一個 \`'ERROR'\`，存到 \`lastInRange\`。
+2. 用 \`lastIndexOf('ERROR')\`（不限範圍）找整體最後一個，存到 \`lastOverall\`。`,
+        examples: [
+          {
+            input: `log = 'ERROR: 404, INFO: ok, ERROR: 500, INFO: done'`,
+            output: `lastInRange === 0，lastOverall === 22`,
+          },
+        ],
+        constraints: [
+          'lastInRange 必須使用 lastIndexOf 的第二個參數',
+        ],
+        initialCode: `const log = 'ERROR: 404, INFO: ok, ERROR: 500, INFO: done'
+
+// TODO: 在前 31 個字元內找最後一個 'ERROR'，存到 lastInRange
+let lastInRange
+
+// TODO: 不限範圍，找整體最後一個 'ERROR'，存到 lastOverall
+let lastOverall
+`,
+        testCases: [
+          { label: 'lastInRange 應為 0', test: `return lastInRange === 0` },
+          { label: 'lastOverall 應為 22', test: `return lastOverall === 22` },
+          {
+            label: 'fromIndex 限縮了搜尋範圍',
+            test: `const s = 'ERROR: 404, INFO: ok, ERROR: 500'; return s.lastIndexOf('ERROR', 10) === 0`,
+          },
+          {
+            label: '超出範圍後找不到回傳 -1',
+            test: `return 'INFO: ok'.lastIndexOf('ERROR', 10) === -1`,
           },
         ],
       },
