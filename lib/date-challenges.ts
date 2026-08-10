@@ -1,10 +1,12 @@
 import type { MethodEntry } from './array-challenges'
 import { dateChallengesPart1 } from './date-challenges-part1'
 import { dateChallengesPart2 } from './date-challenges-part2'
+import { dateChallengesPart3 } from './date-challenges-part3'
 
 export const dateChallenges: MethodEntry[] = [
   ...dateChallengesPart1,
   ...dateChallengesPart2,
+  ...dateChallengesPart3,
 ]
 
 export function hasDateChallenge(slug: string): boolean {

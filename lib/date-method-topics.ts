@@ -849,6 +849,75 @@ d.toLocaleDateString('zh-TW')  // '2024/3/15'（本地時間，UTC+8 = 08:00）
     ],
   },
 
+  // ─── 格式化（續）─────────────────────────────────────────────────
+  {
+    slug: 'date-dayjs',
+    title: 'dayjs vs 原生 Date',
+    description: '對照 dayjs 的簡潔語法，用原生 Date API 實作相同功能，深化對兩者的理解。',
+    subCategory: '格式化',
+    difficulty: 'medium',
+    notes: {
+      sections: [
+        {
+          heading: 'dayjs 是什麼',
+          content: `dayjs 是一個輕量（2KB）的日期處理函式庫，API 設計仿照 Moment.js，但更小更快。
+主要特性：**不可變（immutable）**，每個操作都回傳新物件，不修改原始值。`,
+        },
+        {
+          heading: '格式化對照',
+          content: `\`\`\`js
+// dayjs
+dayjs('2024-03-15').format('YYYY-MM-DD')  // '2024-03-15'
+dayjs('2024-03-15').format('YYYY/MM/DD')  // '2024/03/15'
+
+// 原生 Date
+const d = new Date('2024-03-15')
+const y = d.getFullYear()
+const m = String(d.getMonth() + 1).padStart(2, '0')
+const day = String(d.getDate()).padStart(2, '0')
+\`\${y}-\${m}-\${day}\`  // '2024-03-15'
+\`\`\``,
+        },
+        {
+          heading: '日期計算對照',
+          content: `\`\`\`js
+// 相差幾天
+dayjs('2024-03-15').diff(dayjs('2024-01-01'), 'day')  // 74
+// 原生
+const ms = new Date('2024-03-15') - new Date('2024-01-01')
+Math.floor(ms / (1000 * 60 * 60 * 24))  // 74
+
+// 加 N 天（dayjs 不可變，原生 setDate 會改原物件）
+dayjs('2024-01-15').add(30, 'day').format('YYYY-MM-DD')  // '2024-02-14'
+// 原生（需先複製）
+const copy = new Date('2024-01-15')
+copy.setDate(copy.getDate() + 30)
+\`\`\``,
+        },
+        {
+          heading: '日期驗證對照',
+          content: `\`\`\`js
+// dayjs
+dayjs('2024-13-01').isValid()   // false（13月不存在）
+dayjs('2024-01-15').isValid()   // true
+
+// 原生
+!isNaN(new Date('2024-13-01').getTime())  // false
+!isNaN(new Date('2024-01-15').getTime())  // true
+\`\`\``,
+        },
+      ],
+    },
+    questions: [],
+    keyPoints: [
+      'dayjs 的 format() 需要手動 padStart 才能用原生寫法複現，因為 getMonth() 是 0-based。',
+      'dayjs 是 immutable（不可變），每次操作回傳新物件；原生 setDate() 會直接修改原物件，要先複製。',
+      '日期差異計算：兩個 Date 相減得到毫秒數，再除以 86400000 得到天數。',
+      'dayjs 的 isValid() 等效於原生的 !isNaN(new Date(str).getTime())。',
+      'dayjs 語法更簡潔，但學會原生寫法能讓你不依賴函式庫解決問題。',
+    ],
+  },
+
   // ─── 運算 ────────────────────────────────────────────────────────
   {
     slug: 'date-calc',
@@ -988,6 +1057,68 @@ function daysBetween(a, b) {
       'setDate 超出當月天數會自動進位到下個月，例如 1/31 + 1 = 2/1',
       '計算 N 天後：new Date(date); copy.setDate(copy.getDate() + N)',
       '計算日期差：Math.round(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24))',
+    ],
+  },
+
+  // ─── 運算（續）───────────────────────────────────────────────────
+  {
+    slug: 'performance-timing',
+    title: 'performance.now()',
+    description: '用高精度單調時鐘測量程式碼執行時間，比 Date.now() 更適合效能分析。',
+    subCategory: '運算',
+    difficulty: 'medium',
+    notes: {
+      sections: [
+        {
+          heading: '語法與回傳值',
+          content: `\`performance.now()\`
+
+- 回傳：距離**頁面載入**的毫秒數（DOMHighResTimeStamp），可含小數（sub-millisecond 精度）。
+- 使用**單調時鐘**：只會向前增加，不受系統時間調整影響。
+- 不是 Unix 時間戳，是相對時間。
+
+\`performance.timeOrigin\`
+
+- 回傳：當前頁面開始載入的 Unix 時間戳（毫秒，整數）。
+- \`performance.timeOrigin + performance.now() ≈ Date.now()\`。`,
+        },
+        {
+          heading: '程式碼範例',
+          content: `\`\`\`js
+// 測量執行時間
+const start = performance.now()
+doSomething()
+const end = performance.now()
+console.log(\`耗時 \${end - start} ms\`)
+
+// 取得精確的當前絕對時間
+const absoluteNow = performance.timeOrigin + performance.now()
+// ≈ Date.now()，但更精確
+
+// 與 Date.now() 比較
+performance.now()   // 例：1234.56（相對頁面載入）
+Date.now()          // 例：1722825600000（Unix 時間戳）
+\`\`\``,
+        },
+        {
+          heading: 'performance.now() vs Date.now()',
+          content: `| 特性 | performance.now() | Date.now() |
+|------|-------------------|------------|
+| 時間類型 | 相對（頁面載入起） | 絕對（Unix 時間戳） |
+| 精度 | sub-millisecond | 毫秒 |
+| 單調性 | ✅ 只會增加 | ❌ 可能受系統校時影響 |
+| 用途 | 效能測量 | 取得當前時間 |
+| 回傳值大小 | 小（數秒到數小時） | 大（約 1.7 兆） |`,
+        },
+      ],
+    },
+    questions: [],
+    keyPoints: [
+      'performance.now() 回傳距頁面載入的毫秒數，不是 Unix 時間戳，所以值比 Date.now() 小很多。',
+      '它使用單調時鐘，不受系統時間調整影響，適合用來測量程式碼執行時間。',
+      '精度可達 sub-millisecond（回傳值可能含小數），比 Date.now() 更精準。',
+      'performance.timeOrigin 是頁面載入的 Unix 時間戳，加上 performance.now() 可得近似的當前絕對時間。',
+      '需要測量「執行多久」用 performance.now()，需要記錄「幾點幾分」用 Date.now() 或 new Date()。',
     ],
   },
 
