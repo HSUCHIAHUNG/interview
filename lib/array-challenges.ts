@@ -5003,6 +5003,7 @@ import { hasStringChallenge, getStringChallenge, stringChallenges } from './stri
 import { hasNumberChallenge, getNumberChallenge, numberChallenges } from './number-challenges'
 import { hasDateChallenge, getDateChallenge, dateChallenges } from './date-challenges'
 import { hasObjectChallenge, getObjectChallenge, objectChallenges } from './object-challenges'
+import { hasMapsetChallenge, getMapsetChallenge, mapsetChallenges } from './mapset-challenges'
 
 export function hasPracticeChallenge(slug: string): boolean {
   return arrayMethodChallenges.some(e => e.slug === slug)
@@ -5012,6 +5013,7 @@ export function hasPracticeChallenge(slug: string): boolean {
     || hasNumberChallenge(slug)
     || hasDateChallenge(slug)
     || hasObjectChallenge(slug)
+    || hasMapsetChallenge(slug)
 }
 
 export function getPracticeChallenge(slug: string): MethodEntry | undefined {
@@ -5022,6 +5024,7 @@ export function getPracticeChallenge(slug: string): MethodEntry | undefined {
     ?? getNumberChallenge(slug)
     ?? getDateChallenge(slug)
     ?? getObjectChallenge(slug)
+    ?? getMapsetChallenge(slug)
 }
 
 export function getAllPracticeSlugs(): string[] {
@@ -5033,5 +5036,6 @@ export function getAllPracticeSlugs(): string[] {
     ...numberChallenges.map(e => e.slug),
     ...dateChallenges.map(e => e.slug),
     ...objectChallenges.map(e => e.slug),
+    ...mapsetChallenges.map(e => e.slug),
   ]
 }
