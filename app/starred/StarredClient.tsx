@@ -162,10 +162,22 @@ export default function StarredClient() {
   }
 
   function unmarkPracticeReviewed(key: string) {
+    const reviewedAt = practiceReviewedMap[key]
     const next = { ...practiceReviewedMap }
     delete next[key]
     setPracticeReviewedMap(next)
     savePracticeReviewedMap(next)
+    if (reviewedAt) {
+      const reviewDate = reviewedAt.split('T')[0]
+      try {
+        const counts: Record<string, number> = JSON.parse(localStorage.getItem(LS_PRACTICE_REVIEW_COUNTS) ?? '{}')
+        if (counts[reviewDate] > 0) {
+          counts[reviewDate] -= 1
+          if (counts[reviewDate] === 0) delete counts[reviewDate]
+          localStorage.setItem(LS_PRACTICE_REVIEW_COUNTS, JSON.stringify(counts))
+        }
+      } catch {}
+    }
   }
 
   function togglePracticeReviewed(key: string) {
