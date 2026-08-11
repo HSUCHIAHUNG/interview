@@ -5,4 +5,5 @@ export type StarredProblemItem = {
   problemDescription: string
   difficulty: 'easy' | 'medium' | 'hard'
   topicTitle: string
+  theme: string
 }

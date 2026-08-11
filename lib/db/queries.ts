@@ -530,14 +530,9 @@ export type StarredQuestion = {
   subCategory: string | null
 }
 
-export async function getStarredQuestions(
-  userId: string,
-  cursor?: number,
-  limit = 30,
-): Promise<{ items: StarredQuestion[]; nextCursor: number | null }> {
+export async function getStarredQuestions(userId: string): Promise<StarredQuestion[]> {
   const rows = await db
     .select({
-      starredId: userStarredQuestions.id,
       questionId: questions.id,
       question: questions.question,
       options: questions.options,
@@ -551,31 +546,20 @@ export async function getStarredQuestions(
     .from(userStarredQuestions)
     .innerJoin(questions, eq(questions.id, userStarredQuestions.questionId))
     .innerJoin(topics, eq(topics.id, questions.topicId))
-    .where(and(
-      eq(userStarredQuestions.userId, userId),
-      cursor ? gt(userStarredQuestions.id, cursor) : undefined,
-    ))
+    .where(eq(userStarredQuestions.userId, userId))
     .orderBy(asc(userStarredQuestions.id))
-    .limit(limit + 1)
 
-  const hasMore = rows.length > limit
-  const batch = hasMore ? rows.slice(0, limit) : rows
-  const nextCursor = hasMore ? batch[batch.length - 1].starredId : null
-
-  return {
-    items: batch.map(r => ({
-      questionId: r.questionId,
-      question: r.question,
-      options: (r.options ?? []) as string[],
-      answer: r.answer ?? 0,
-      explanation: r.explanation,
-      topicSlug: r.topicSlug,
-      topicTitle: r.topicTitle,
-      theme: r.theme,
-      subCategory: r.subCategory,
-    })),
-    nextCursor,
-  }
+  return rows.map(r => ({
+    questionId: r.questionId,
+    question: r.question,
+    options: (r.options ?? []) as string[],
+    answer: r.answer ?? 0,
+    explanation: r.explanation,
+    topicSlug: r.topicSlug,
+    topicTitle: r.topicTitle,
+    theme: r.theme,
+    subCategory: r.subCategory,
+  }))
 }
 
 export async function toggleStarredQuestion(userId: string, questionId: number): Promise<boolean> {
@@ -629,6 +613,15 @@ export async function getAllStarredProblemRows(userId: string): Promise<StarredP
     .where(eq(userStarredProblems.userId, userId))
     .orderBy(desc(userStarredProblems.id))
   return rows
+}
+
+export async function getTopicThemesBySlug(slugs: string[]): Promise<Record<string, string>> {
+  if (slugs.length === 0) return {}
+  const rows = await db
+    .select({ slug: topics.slug, theme: topics.theme })
+    .from(topics)
+    .where(inArray(topics.slug, slugs))
+  return Object.fromEntries(rows.map(r => [r.slug, r.theme]))
 }
 
 export async function getStarredCounts(userId: string): Promise<{

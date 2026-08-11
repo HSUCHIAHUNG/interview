@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { getStarredQuestions, getStarredProblemRows } from '@/lib/db/queries'
+import { getStarredQuestions, getStarredProblemRows, getTopicThemesBySlug } from '@/lib/db/queries'
 import { getPracticeChallenge } from '@/lib/array-challenges'
 import type { StarredProblemItem } from '@/app/starred/types'
 
@@ -12,16 +12,16 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url)
   const type = searchParams.get('type')
-  const cursorParam = searchParams.get('cursor')
-  const cursor = cursorParam ? parseInt(cursorParam, 10) : undefined
 
   if (type === 'questions') {
-    const { items, nextCursor } = await getStarredQuestions(userId, cursor)
-    return NextResponse.json({ questions: items, nextCursor })
+    const items = await getStarredQuestions(userId)
+    return NextResponse.json({ questions: items })
   }
 
   if (type === 'problems') {
     const items = await getStarredProblemRows(userId)
+    const slugs = [...new Set(items.map(r => r.topicSlug))]
+    const themeMap = await getTopicThemesBySlug(slugs)
     const problems: StarredProblemItem[] = items.flatMap(row => {
       const entry = getPracticeChallenge(row.topicSlug)
       if (!entry) return []
@@ -34,6 +34,7 @@ export async function GET(req: Request) {
         problemDescription: problem.description,
         difficulty: problem.difficulty as 'easy' | 'medium' | 'hard',
         topicTitle: entry.title,
+        theme: themeMap[row.topicSlug] ?? '',
       }]
     })
     return NextResponse.json({ problems })

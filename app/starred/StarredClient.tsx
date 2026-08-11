@@ -9,6 +9,55 @@ import type { StarredProblemItem } from './types'
 
 type Tab = 'quiz' | 'qa' | 'practice'
 
+// ── localStorage utilities ────────────────────────────────────────────────────
+
+const LS_REVIEWED = 'starred_reviewed'
+const LS_REVIEW_COUNTS = 'starred_review_counts'
+const LS_RESET_DAYS = 'starred_review_reset_days'
+const LS_PRACTICE_REVIEWED = 'starred_practice_reviewed'
+const LS_PRACTICE_REVIEW_COUNTS = 'starred_practice_review_counts'
+
+function loadReviewedMap(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(LS_REVIEWED) ?? '{}') } catch { return {} }
+}
+function saveReviewedMap(map: Record<string, string>) {
+  localStorage.setItem(LS_REVIEWED, JSON.stringify(map))
+}
+function incTodayReviewCount(questionId: number, prevMap: Record<string, string>) {
+  const today = new Date().toISOString().split('T')[0]
+  if (prevMap[String(questionId)]?.startsWith(today)) return
+  try {
+    const counts: Record<string, number> = JSON.parse(localStorage.getItem(LS_REVIEW_COUNTS) ?? '{}')
+    counts[today] = (counts[today] ?? 0) + 1
+    localStorage.setItem(LS_REVIEW_COUNTS, JSON.stringify(counts))
+  } catch {}
+}
+
+function loadPracticeReviewedMap(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(LS_PRACTICE_REVIEWED) ?? '{}') } catch { return {} }
+}
+function savePracticeReviewedMap(map: Record<string, string>) {
+  localStorage.setItem(LS_PRACTICE_REVIEWED, JSON.stringify(map))
+}
+function incTodayPracticeReviewCount(key: string, prevMap: Record<string, string>) {
+  const today = new Date().toISOString().split('T')[0]
+  if (prevMap[key]?.startsWith(today)) return
+  try {
+    const counts: Record<string, number> = JSON.parse(localStorage.getItem(LS_PRACTICE_REVIEW_COUNTS) ?? '{}')
+    counts[today] = (counts[today] ?? 0) + 1
+    localStorage.setItem(LS_PRACTICE_REVIEW_COUNTS, JSON.stringify(counts))
+  } catch {}
+}
+
+const RESET_OPTIONS = [
+  { days: 1, label: '每天' },
+  { days: 3, label: '3 天' },
+  { days: 7, label: '每週' },
+  { days: 14, label: '2 週' },
+  { days: 30, label: '每月' },
+  { days: 0, label: '永不重置' },
+]
+
 // ── Flat list types ───────────────────────────────────────────────────────────
 
 type QuestionFlatItem =
@@ -16,7 +65,7 @@ type QuestionFlatItem =
   | { kind: 'card'; q: StarredQuestion; idx: number }
 
 type ProblemFlatItem =
-  | { kind: 'header'; topicSlug: string; topicTitle: string; count: number }
+  | { kind: 'header'; topicSlug: string; topicTitle: string; theme: string; count: number }
   | { kind: 'card'; p: StarredProblemItem }
 
 function buildQuestionFlat(questions: StarredQuestion[]): QuestionFlatItem[] {
@@ -34,14 +83,14 @@ function buildQuestionFlat(questions: StarredQuestion[]): QuestionFlatItem[] {
 }
 
 function buildProblemFlat(problems: StarredProblemItem[]): ProblemFlatItem[] {
-  const grouped: Record<string, { topicTitle: string; items: StarredProblemItem[] }> = {}
+  const grouped: Record<string, { topicTitle: string; theme: string; items: StarredProblemItem[] }> = {}
   for (const p of problems) {
-    if (!grouped[p.topicSlug]) grouped[p.topicSlug] = { topicTitle: p.topicTitle, items: [] }
+    if (!grouped[p.topicSlug]) grouped[p.topicSlug] = { topicTitle: p.topicTitle, theme: p.theme, items: [] }
     grouped[p.topicSlug].items.push(p)
   }
   const flat: ProblemFlatItem[] = []
   for (const [slug, g] of Object.entries(grouped)) {
-    flat.push({ kind: 'header', topicSlug: slug, topicTitle: g.topicTitle, count: g.items.length })
+    flat.push({ kind: 'header', topicSlug: slug, topicTitle: g.topicTitle, theme: g.theme, count: g.items.length })
     g.items.forEach(p => flat.push({ kind: 'card', p }))
   }
   return flat
@@ -57,11 +106,9 @@ export default function StarredClient() {
     return t === 'quiz' || t === 'qa' || t === 'practice' ? t : 'quiz'
   })
 
-  const [totalCounts, setTotalCounts] = useState<{ questionsCount: number; quizCount: number; problemsCount: number } | null>(null)
+  const [problemsCount, setProblemsCount] = useState<number | null>(null)
 
   const [questions, setQuestions] = useState<StarredQuestion[]>([])
-  const [qCursor, setQCursor] = useState<number | null>(null)
-  const [qHasMore, setQHasMore] = useState(true)
   const [qLoading, setQLoading] = useState(false)
   const qFetched = useRef(false)
 
@@ -69,17 +116,78 @@ export default function StarredClient() {
   const [pLoading, setPLoading] = useState(false)
   const pFetched = useRef(false)
 
-  async function loadQuestions(cursor: number | null = null) {
+  // Reviewed state (localStorage)
+  const [reviewedMap, setReviewedMap] = useState<Record<string, string>>({})
+  const [practiceReviewedMap, setPracticeReviewedMap] = useState<Record<string, string>>({})
+  const [resetDays, setResetDays] = useState<number>(7)
+
+  // Theme filter (applies to all tabs)
+  const [themeFilter, setThemeFilter] = useState<string | null>(null)
+
+  useEffect(() => {
+    setReviewedMap(loadReviewedMap())
+    setPracticeReviewedMap(loadPracticeReviewedMap())
+    const saved = localStorage.getItem(LS_RESET_DAYS)
+    if (saved !== null) setResetDays(Number(saved))
+  }, [])
+
+  function markReviewed(questionId: number) {
+    const prev = reviewedMap
+    incTodayReviewCount(questionId, prev)
+    const next = { ...prev, [String(questionId)]: new Date().toISOString() }
+    setReviewedMap(next)
+    saveReviewedMap(next)
+  }
+
+  function isItemReviewed(questionId: number): boolean {
+    const reviewedAt = reviewedMap[String(questionId)]
+    if (!reviewedAt) return false
+    if (resetDays === 0) return true
+    return new Date(reviewedAt).getTime() > Date.now() - resetDays * 86400000
+  }
+
+  function isPracticeReviewed(key: string): boolean {
+    const reviewedAt = practiceReviewedMap[key]
+    if (!reviewedAt) return false
+    if (resetDays === 0) return true
+    return new Date(reviewedAt).getTime() > Date.now() - resetDays * 86400000
+  }
+
+  function markPracticeReviewed(key: string) {
+    const prev = practiceReviewedMap
+    incTodayPracticeReviewCount(key, prev)
+    const next = { ...prev, [key]: new Date().toISOString() }
+    setPracticeReviewedMap(next)
+    savePracticeReviewedMap(next)
+  }
+
+  function unmarkPracticeReviewed(key: string) {
+    const next = { ...practiceReviewedMap }
+    delete next[key]
+    setPracticeReviewedMap(next)
+    savePracticeReviewedMap(next)
+  }
+
+  function togglePracticeReviewed(key: string) {
+    if (isPracticeReviewed(key)) {
+      unmarkPracticeReviewed(key)
+    } else {
+      markPracticeReviewed(key)
+    }
+  }
+
+  function handleResetDaysChange(days: number) {
+    setResetDays(days)
+    localStorage.setItem(LS_RESET_DAYS, String(days))
+  }
+
+  async function loadQuestions() {
     if (qLoading) return
     setQLoading(true)
     try {
-      const url = `/api/starred/list?type=questions${cursor != null ? `&cursor=${cursor}` : ''}`
-      const res = await fetch(url)
+      const res = await fetch('/api/starred/list?type=questions')
       const data = await res.json()
-      const batch: StarredQuestion[] = data.questions ?? []
-      setQuestions(prev => cursor == null ? batch : [...prev, ...batch])
-      setQCursor(data.nextCursor)
-      setQHasMore(data.nextCursor !== null)
+      setQuestions(data.questions ?? [])
     } finally {
       setQLoading(false)
     }
@@ -98,23 +206,21 @@ export default function StarredClient() {
   }
 
   useEffect(() => {
-    fetch('/api/starred/count').then(r => r.json()).then(setTotalCounts)
+    fetch('/api/starred/count').then(r => r.json()).then((d: { problemsCount: number }) => setProblemsCount(d.problemsCount))
     if (!qFetched.current) { qFetched.current = true; loadQuestions() }
     if (!pFetched.current) { pFetched.current = true; loadProblems() }
 
     function refreshProblems() {
-      fetch('/api/starred/count').then(r => r.json()).then(setTotalCounts)
+      fetch('/api/starred/count').then(r => r.json()).then((d: { problemsCount: number }) => setProblemsCount(d.problemsCount))
       loadProblems()
     }
 
-    // BroadcastChannel: practice tab notifies this tab when a problem is starred
     let bc: BroadcastChannel | null = null
     try {
       bc = new BroadcastChannel('starred-problems')
       bc.onmessage = () => refreshProblems()
     } catch { /* BroadcastChannel not supported */ }
 
-    // Fallback: re-fetch when this tab becomes visible (with delay to avoid race condition)
     let visibilityTimer: ReturnType<typeof setTimeout> | null = null
     function handleVisibilityChange() {
       if (document.visibilityState === 'visible') {
@@ -154,21 +260,119 @@ export default function StarredClient() {
     setProblems(prev => prev.filter(p => !(p.topicSlug === topicSlug && p.problemId === problemId)))
   }
 
-  const quizQuestions = questions.filter(q => q.options && q.options.length > 0)
-  const qaQuestions = questions
+  // All available themes from both questions and practice problems
+  const allAvailableThemes = [...new Set([
+    ...questions.map(q => q.theme),
+    ...problems.map(p => p.theme).filter(t => t !== ''),
+  ])].sort()
+
+  // Apply theme filter
+  const filteredQuestions = themeFilter
+    ? questions.filter(q => q.theme === themeFilter)
+    : questions
+
+  const filteredProblems = themeFilter
+    ? problems.filter(p => p.theme === themeFilter)
+    : problems
+
+  const quizQuestions = filteredQuestions.filter(q => q.options && q.options.length > 0)
+  const qaQuestions = filteredQuestions
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: 'quiz', label: '選擇題', count: totalCounts?.quizCount ?? quizQuestions.length },
-    { key: 'qa', label: '問答練習', count: totalCounts?.questionsCount ?? qaQuestions.length },
-    { key: 'practice', label: '實作題', count: totalCounts?.problemsCount ?? problems.length },
+    { key: 'quiz', label: '選擇題', count: quizQuestions.length },
+    { key: 'qa', label: '問答練習', count: qaQuestions.length },
+    { key: 'practice', label: '實作題', count: themeFilter ? filteredProblems.length : (problemsCount ?? problems.length) },
   ]
 
   const quizFlat = buildQuestionFlat(quizQuestions)
   const qaFlat = buildQuestionFlat(qaQuestions)
-  const problemFlat = buildProblemFlat(problems)
+  const problemFlat = buildProblemFlat(filteredProblems)
+
+  const reviewedCount = filteredQuestions.filter(q => isItemReviewed(q.questionId)).length
+  const totalQCount = filteredQuestions.length
+
+  const practiceReviewedCount = filteredProblems.filter(p => isPracticeReviewed(`${p.topicSlug}-${p.problemId}`)).length
+  const totalPCount = filteredProblems.length
 
   return (
     <div>
+      {/* Reset interval setting */}
+      <div className="mb-3 flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-gray-600 shrink-0">重置週期：</span>
+        {RESET_OPTIONS.map(opt => (
+          <button
+            key={opt.days}
+            onClick={() => handleResetDaysChange(opt.days)}
+            className={`text-xs px-2.5 py-1 rounded-lg border transition ${
+              resetDays === opt.days
+                ? 'border-blue-600 text-blue-400 bg-blue-900/20'
+                : 'border-gray-800 text-gray-600 hover:border-gray-600 hover:text-gray-400'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Theme filter (all tabs) */}
+      {allAvailableThemes.length > 1 && (
+        <div className="mb-3 flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-gray-600 shrink-0">分類：</span>
+          <button
+            onClick={() => setThemeFilter(null)}
+            className={`text-xs px-2.5 py-1 rounded-lg border transition ${
+              themeFilter === null
+                ? 'border-gray-500 text-gray-300 bg-gray-800'
+                : 'border-gray-800 text-gray-600 hover:border-gray-600 hover:text-gray-400'
+            }`}
+          >
+            全部
+          </button>
+          {allAvailableThemes.map(theme => (
+            <button
+              key={theme}
+              onClick={() => setThemeFilter(theme)}
+              className={`text-xs px-2.5 py-1 rounded-lg border transition ${
+                themeFilter === theme
+                  ? 'border-gray-500 text-gray-300 bg-gray-800'
+                  : 'border-gray-800 text-gray-600 hover:border-gray-600 hover:text-gray-400'
+              }`}
+            >
+              {theme}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Reviewed progress bar */}
+      {tab !== 'practice' && totalQCount > 0 && (
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-600 rounded-full transition-all"
+              style={{ width: `${(reviewedCount / totalQCount) * 100}%` }}
+            />
+          </div>
+          <span className="text-xs text-gray-600 shrink-0">
+            已複習 <span className="text-emerald-600 font-medium">{reviewedCount}</span>/{totalQCount}
+          </span>
+        </div>
+      )}
+      {tab === 'practice' && totalPCount > 0 && (
+        <div className="mb-4 flex items-center gap-3">
+          <div className="flex-1 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-emerald-600 rounded-full transition-all"
+              style={{ width: `${(practiceReviewedCount / totalPCount) * 100}%` }}
+            />
+          </div>
+          <span className="text-xs text-gray-600 shrink-0">
+            已複習 <span className="text-emerald-600 font-medium">{practiceReviewedCount}</span>/{totalPCount}
+          </span>
+        </div>
+      )}
+
+      {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-gray-900 border border-gray-800 rounded-xl p-1">
         {tabs.map(t => (
           <button
@@ -193,10 +397,9 @@ export default function StarredClient() {
           key="quiz"
           flatItems={quizFlat}
           onUnstar={unstarQuestion}
+          onMarkReviewed={markReviewed}
+          isItemReviewed={isItemReviewed}
           showOptions
-          hasMore={qHasMore}
-          loadingMore={qLoading}
-          onLoadMore={() => loadQuestions(qCursor)}
         />
       )}
       {tab === 'qa' && (
@@ -206,10 +409,9 @@ export default function StarredClient() {
           key="qa"
           flatItems={qaFlat}
           onUnstar={unstarQuestion}
+          onMarkReviewed={markReviewed}
+          isItemReviewed={isItemReviewed}
           showOptions={false}
-          hasMore={qHasMore}
-          loadingMore={qLoading}
-          onLoadMore={() => loadQuestions(qCursor)}
         />
       )}
       {tab === 'practice' && (
@@ -218,6 +420,8 @@ export default function StarredClient() {
         <VirtualProblemList
           flatItems={problemFlat}
           onUnstar={unstarProblem}
+          onToggleReviewed={togglePracticeReviewed}
+          isPracticeReviewed={isPracticeReviewed}
         />
       )}
     </div>
@@ -244,18 +448,16 @@ function EmptyState({ text, hint }: { text: string; hint: string }) {
   )
 }
 
-// ── Virtual question list (window scroll) ────────────────────────────────────
+// ── Virtual question list ─────────────────────────────────────────────────────
 
-function VirtualQuestionList({ flatItems, onUnstar, showOptions, hasMore, loadingMore, onLoadMore }: {
+function VirtualQuestionList({ flatItems, onUnstar, onMarkReviewed, isItemReviewed, showOptions }: {
   flatItems: QuestionFlatItem[]
   onUnstar: (id: number) => void
+  onMarkReviewed: (id: number) => void
+  isItemReviewed: (id: number) => boolean
   showOptions: boolean
-  hasMore: boolean
-  loadingMore: boolean
-  onLoadMore: () => void
 }) {
   const listRef = useRef<HTMLDivElement>(null)
-  const loadingMoreRef = useRef(false)
 
   const virtualizer = useWindowVirtualizer({
     count: flatItems.length,
@@ -265,16 +467,6 @@ function VirtualQuestionList({ flatItems, onUnstar, showOptions, hasMore, loadin
   })
 
   const virtualItems = virtualizer.getVirtualItems()
-  useEffect(() => {
-    if (!virtualItems.length || !hasMore || loadingMore || loadingMoreRef.current) return
-    const lastVisible = virtualItems[virtualItems.length - 1]
-    if (lastVisible.index >= flatItems.length - 5) {
-      loadingMoreRef.current = true
-      onLoadMore()
-    }
-  }, [virtualItems, flatItems.length, hasMore, loadingMore])
-
-  useEffect(() => { loadingMoreRef.current = false }, [loadingMore])
 
   return (
     <div ref={listRef}>
@@ -302,33 +494,39 @@ function VirtualQuestionList({ flatItems, onUnstar, showOptions, hasMore, loadin
                   <span className="text-xs text-gray-600">{item.count} 題</span>
                 </div>
               ) : (
-                <QuestionCard q={item.q} idx={item.idx} onUnstar={onUnstar} showOptions={showOptions} />
+                <QuestionCard
+                  q={item.q}
+                  idx={item.idx}
+                  onUnstar={onUnstar}
+                  onMarkReviewed={onMarkReviewed}
+                  isReviewed={isItemReviewed(item.q.questionId)}
+                  showOptions={showOptions}
+                />
               )}
             </div>
           )
         })}
       </div>
-      {loadingMore && (
-        <div className="text-center py-3 text-xs text-gray-600 animate-pulse">載入中...</div>
-      )}
-      {!hasMore && flatItems.length > 0 && (
-        <div className="text-center py-3 text-xs text-gray-700">已顯示全部 {flatItems.filter(i => i.kind === 'card').length} 題</div>
+      {flatItems.length > 0 && (
+        <div className="text-center py-3 text-xs text-gray-700">共 {flatItems.filter(i => i.kind === 'card').length} 題</div>
       )}
     </div>
   )
 }
 
-// ── Virtual problem list (window scroll) ─────────────────────────────────────
+// ── Virtual problem list ──────────────────────────────────────────────────────
 
-function VirtualProblemList({ flatItems, onUnstar }: {
+function VirtualProblemList({ flatItems, onUnstar, onToggleReviewed, isPracticeReviewed }: {
   flatItems: ProblemFlatItem[]
   onUnstar: (topicSlug: string, problemId: string) => void
+  onToggleReviewed: (key: string) => void
+  isPracticeReviewed: (key: string) => boolean
 }) {
   const listRef = useRef<HTMLDivElement>(null)
 
   const virtualizer = useWindowVirtualizer({
     count: flatItems.length,
-    estimateSize: (i) => flatItems[i].kind === 'header' ? 48 : 100,
+    estimateSize: (i) => flatItems[i].kind === 'header' ? 48 : 110,
     scrollMargin: listRef.current?.offsetTop ?? 0,
     overscan: 4,
   })
@@ -357,10 +555,16 @@ function VirtualProblemList({ flatItems, onUnstar }: {
               {item.kind === 'header' ? (
                 <div className="flex items-center gap-2 pt-4 pb-2">
                   <h2 className="text-sm font-semibold text-gray-300">{item.topicTitle}</h2>
+                  {item.theme && <span className="text-xs text-gray-600 bg-gray-800 px-2 py-0.5 rounded-full">{item.theme}</span>}
                   <span className="text-xs text-gray-600">{item.count} 題</span>
                 </div>
               ) : (
-                <ProblemCard p={item.p} onUnstar={onUnstar} />
+                <ProblemCard
+                  p={item.p}
+                  onUnstar={onUnstar}
+                  onToggleReviewed={onToggleReviewed}
+                  isReviewed={isPracticeReviewed(`${item.p.topicSlug}-${item.p.problemId}`)}
+                />
               )}
             </div>
           )
@@ -375,9 +579,11 @@ function VirtualProblemList({ flatItems, onUnstar }: {
 
 // ── Question card ─────────────────────────────────────────────────────────────
 
-function QuestionCard({ q, idx, onUnstar, showOptions }: {
+function QuestionCard({ q, idx, onUnstar, onMarkReviewed, isReviewed, showOptions }: {
   q: StarredQuestion; idx: number
   onUnstar: (id: number) => void
+  onMarkReviewed: (id: number) => void
+  isReviewed: boolean
   showOptions: boolean
 }) {
   const [selected, setSelected] = useState<number | null>(null)
@@ -387,6 +593,15 @@ function QuestionCard({ q, idx, onUnstar, showOptions }: {
 
   const answered = showOptions ? selected !== null : revealed
   const isCorrect = selected === q.answer
+
+  const answeredRef = useRef(false)
+  useEffect(() => {
+    if (!answered) { answeredRef.current = false; return }
+    if (!answeredRef.current) {
+      answeredRef.current = true
+      onMarkReviewed(q.questionId)
+    }
+  }, [answered])
 
   async function handleUnstar() {
     setUnstarring(true)
@@ -399,17 +614,30 @@ function QuestionCard({ q, idx, onUnstar, showOptions }: {
     setUserAnswer('')
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Tab') {
+      e.preventDefault()
+    }
+  }
+
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+    <div className={`bg-gray-900 border rounded-xl overflow-hidden transition ${
+      isReviewed && !answered ? 'border-emerald-900/50 opacity-60' : isReviewed ? 'border-emerald-900/50' : 'border-gray-800'
+    }`}>
       <div className="flex items-start gap-3 p-4">
         <span className="shrink-0 text-xs font-bold text-gray-600 mt-0.5 w-5">{idx + 1}.</span>
         <p className="flex-1 text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{q.question}</p>
-        <button
-          onClick={handleUnstar}
-          disabled={unstarring}
-          title="取消必考題"
-          className="shrink-0 text-yellow-400 hover:text-gray-500 transition disabled:opacity-40 text-base"
-        >★</button>
+        <div className="flex items-center gap-2 shrink-0">
+          {isReviewed && (
+            <span className="text-xs text-emerald-600 font-medium">✓ 已複習</span>
+          )}
+          <button
+            onClick={handleUnstar}
+            disabled={unstarring}
+            title="取消必考題"
+            className="text-yellow-400 hover:text-gray-500 transition disabled:opacity-40 text-base"
+          >★</button>
+        </div>
       </div>
 
       <div className="border-t border-gray-800 px-4 pb-4 pt-3 space-y-3">
@@ -444,6 +672,7 @@ function QuestionCard({ q, idx, onUnstar, showOptions }: {
             <textarea
               value={userAnswer}
               onChange={e => setUserAnswer(e.target.value)}
+              onKeyDown={handleKeyDown}
               disabled={revealed}
               placeholder="寫下你的答案..."
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 resize-none focus:outline-none focus:border-gray-500 transition disabled:opacity-60"
@@ -492,35 +721,58 @@ const DIFFICULTY_COLOR = {
 }
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
 
-function ProblemCard({ p, onUnstar }: { p: StarredProblemItem; onUnstar: (s: string, id: string) => void }) {
+function ProblemCard({ p, onUnstar, onToggleReviewed, isReviewed }: {
+  p: StarredProblemItem
+  onUnstar: (s: string, id: string) => void
+  onToggleReviewed: (key: string) => void
+  isReviewed: boolean
+}) {
   const [unstarring, setUnstarring] = useState(false)
+  const key = `${p.topicSlug}-${p.problemId}`
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-start gap-4">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-medium text-gray-200">{p.problemTitle}</span>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${DIFFICULTY_COLOR[p.difficulty]}`}>
-            {DIFFICULTY_LABEL[p.difficulty]}
-          </span>
+    <div className={`bg-gray-900 border rounded-xl p-4 transition ${
+      isReviewed ? 'border-emerald-900/50 opacity-60' : 'border-gray-800'
+    }`}>
+      <div className="flex items-start gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="text-sm font-medium text-gray-200">{p.problemTitle}</span>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${DIFFICULTY_COLOR[p.difficulty]}`}>
+              {DIFFICULTY_LABEL[p.difficulty]}
+            </span>
+            {isReviewed && (
+              <span className="text-xs text-emerald-600 font-medium">✓ 已複習</span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{p.problemDescription}</p>
         </div>
-        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{p.problemDescription}</p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <Link
-          href={`/practice/${p.topicSlug}/${p.problemId}?from=starred`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 hover:border-blue-600 px-2.5 py-1.5 rounded-lg transition"
-        >
-          前往練習
-        </Link>
-        <button
-          onClick={async () => { setUnstarring(true); await onUnstar(p.topicSlug, p.problemId) }}
-          disabled={unstarring}
-          title="取消必考題"
-          className="text-yellow-400 hover:text-gray-500 transition disabled:opacity-40 text-xl"
-        >★</button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => onToggleReviewed(key)}
+            className={`text-xs px-2.5 py-1.5 rounded-lg border transition ${
+              isReviewed
+                ? 'border-emerald-800 text-emerald-600 hover:border-red-800 hover:text-red-500'
+                : 'border-gray-700 text-gray-500 hover:border-emerald-700 hover:text-emerald-600'
+            }`}
+          >
+            {isReviewed ? '取消複習' : '標記複習'}
+          </button>
+          <Link
+            href={`/practice/${p.topicSlug}/${p.problemId}?from=starred`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-400 hover:text-blue-300 border border-blue-800 hover:border-blue-600 px-2.5 py-1.5 rounded-lg transition"
+          >
+            前往練習
+          </Link>
+          <button
+            onClick={async () => { setUnstarring(true); await onUnstar(p.topicSlug, p.problemId) }}
+            disabled={unstarring}
+            title="取消必考題"
+            className="text-yellow-400 hover:text-gray-500 transition disabled:opacity-40 text-xl"
+          >★</button>
+        </div>
       </div>
     </div>
   )

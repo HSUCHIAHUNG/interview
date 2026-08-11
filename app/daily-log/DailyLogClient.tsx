@@ -39,12 +39,22 @@ export default function DailyLogClient() {
   const [noteSaved, setNoteSaved] = useState(false)
   const [savingNote, setSavingNote] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [reviewCounts, setReviewCounts] = useState<Record<string, number>>({})
+  const [practiceReviewCounts, setPracticeReviewCounts] = useState<Record<string, number>>({})
 
   useEffect(() => {
     fetch(`/api/focus/history?days=${GRACE}`)
       .then(r => r.json())
       .then((data: FocusDayEntry[]) => { setEntries(data); setLoading(false) })
       .catch(() => setLoading(false))
+    try {
+      const stored = localStorage.getItem('starred_review_counts')
+      if (stored) setReviewCounts(JSON.parse(stored))
+    } catch {}
+    try {
+      const stored = localStorage.getItem('starred_practice_review_counts')
+      if (stored) setPracticeReviewCounts(JSON.parse(stored))
+    } catch {}
   }, [])
 
   const loadNote = useCallback((date: string) => {
@@ -188,7 +198,7 @@ export default function DailyLogClient() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
           <div className="bg-gray-800/50 rounded-xl px-2 sm:px-4 py-3 text-center">
             <p className="text-xl sm:text-2xl font-bold text-blue-400 truncate">
               {selectedEntry ? formatMinutes(selectedEntry.seconds) : '–'}
@@ -200,6 +210,12 @@ export default function DailyLogClient() {
               {selectedEntry?.questionCount ?? '–'}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">答題數</p>
+          </div>
+          <div className="bg-gray-800/50 rounded-xl px-2 sm:px-4 py-3 text-center">
+            <p className="text-xl sm:text-2xl font-bold text-yellow-400">
+              {(reviewCounts[selected] ?? 0) + (practiceReviewCounts[selected] ?? 0)}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5 whitespace-nowrap">必考題複習</p>
           </div>
           <div className="bg-gray-800/50 rounded-xl px-2 sm:px-4 py-3 text-center">
             <p className="text-xl sm:text-2xl font-bold text-gray-400">
@@ -234,37 +250,51 @@ export default function DailyLogClient() {
       </div>
 
       {/* All-time summary */}
-      {!loading && entries.length > 0 && (
-        <div className="bg-gray-900/60 border border-gray-800 rounded-2xl px-6 py-5">
-          <h2 className="text-sm font-semibold text-gray-400 mb-4">長期統計</h2>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="text-center">
-              <p className="text-xl font-bold text-gray-200">
-                {entries.filter(e => e.seconds > 0 || e.questionCount > 0).length}
-              </p>
-              <p className="text-xs text-gray-600">學習天數</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-blue-400">
-                {formatMinutes(entries.reduce((s, e) => s + e.seconds, 0))}
-              </p>
-              <p className="text-xs text-gray-600">總專注時間</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-gray-200">
-                {entries.reduce((s, e) => s + e.questionCount, 0)}
-              </p>
-              <p className="text-xs text-gray-600">總答題數</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xl font-bold text-gray-400">
-                {entries.reduce((s, e) => s + e.leaveCount, 0)}
-              </p>
-              <p className="text-xs text-gray-600">總離開次數</p>
+      {!loading && entries.length > 0 && (() => {
+        const allReviewDates = new Set([...Object.keys(reviewCounts), ...Object.keys(practiceReviewCounts)])
+        const totalReviews = [...allReviewDates].reduce((a, d) => a + (reviewCounts[d] ?? 0) + (practiceReviewCounts[d] ?? 0), 0)
+        const reviewDayCount = [...allReviewDates].filter(d => (reviewCounts[d] ?? 0) + (practiceReviewCounts[d] ?? 0) > 0).length
+        const avgReviews = reviewDayCount > 0 ? (totalReviews / reviewDayCount).toFixed(1) : '0'
+        return (
+          <div className="bg-gray-900/60 border border-gray-800 rounded-2xl px-6 py-5">
+            <h2 className="text-sm font-semibold text-gray-400 mb-4">長期統計</h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <div className="text-center">
+                <p className="text-xl font-bold text-gray-200">
+                  {entries.filter(e => e.seconds > 0 || e.questionCount > 0).length}
+                </p>
+                <p className="text-xs text-gray-600">學習天數</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-bold text-blue-400">
+                  {formatMinutes(entries.reduce((s, e) => s + e.seconds, 0))}
+                </p>
+                <p className="text-xs text-gray-600">總專注時間</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-bold text-gray-200">
+                  {entries.reduce((s, e) => s + e.questionCount, 0)}
+                </p>
+                <p className="text-xs text-gray-600">總答題數</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-bold text-yellow-400">{totalReviews}</p>
+                <p className="text-xs text-gray-600">總必考題複習</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-bold text-yellow-300">{avgReviews}</p>
+                <p className="text-xs text-gray-600">日均複習（有複習日）</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xl font-bold text-gray-400">
+                  {entries.reduce((s, e) => s + e.leaveCount, 0)}
+                </p>
+                <p className="text-xs text-gray-600">總離開次數</p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

@@ -81,6 +81,14 @@ export default async function HomePage() {
           >
             <span>📋</span> 速查表
           </Link>
+          {userId && (
+            <Link
+              href="/starred"
+              className="inline-flex w-full items-center justify-center gap-2 md:w-[200px] bg-yellow-600 hover:bg-yellow-500 text-white font-semibold px-8 py-3 rounded-xl shadow transition"
+            >
+              <span>⭐</span> 必考題
+            </Link>
+          )}
         </div>
 
         {/* Daily progress strip (only when logged in) */}
