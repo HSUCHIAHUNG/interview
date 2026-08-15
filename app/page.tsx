@@ -10,7 +10,7 @@ import {
   getSlugsWithNotes,
 } from "@/lib/db/queries";
 import { hasDemoPage, hasPracticePage } from "@/lib/topics";
-import { getMethodChallenge } from "@/lib/array-challenges";
+import { getPracticeChallenge } from "@/lib/array-challenges";
 import ThemeFilter from "@/app/components/ThemeFilter";
 import DailyProgress from "@/app/components/DailyProgress";
 import HeaderMenu from "@/app/components/HeaderMenu";
@@ -114,7 +114,7 @@ export default async function HomePage() {
                 ? {
                     completed: practiceProgressMap.get(topic.slug) ?? 0,
                     total:
-                      getMethodChallenge(topic.slug)?.problems?.length ?? 5,
+                      getPracticeChallenge(topic.slug)?.problems?.length ?? 0,
                   }
                 : undefined,
             }))}
