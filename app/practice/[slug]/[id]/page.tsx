@@ -1,9 +1,13 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getPracticeChallenge } from '@/lib/array-challenges'
+import { isCssEntry } from '@/lib/css-layout-challenges'
+import type { CssLayoutEntry, CssProblem } from '@/lib/css-layout-challenges'
+import type { MethodEntry, Problem } from '@/lib/array-challenges'
 import { auth } from '@clerk/nextjs/server'
 import { getUserCompletedProblems, getStarredProblemIds, getTopicNavInfo, getAllStarredProblemRows } from '@/lib/db/queries'
 import PracticeClient from './PracticeClient'
+import CssLayoutClient from './CssLayoutClient'
 
 const DIFFICULTY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }
 const DIFFICULTY_COLOR = {
@@ -97,19 +101,34 @@ export default async function ProblemPage({ params, searchParams }: Props) {
           )}
         </div>
 
-        <PracticeClient
-          entry={entry}
-          problem={problem}
-          topicSlug={slug}
-          isLoggedIn={!!userId}
-          initialCompleted={isCompleted}
-          initialStarred={isStarred}
-          prevProblem={prevProblem ? { id: prevProblem.id, title: prevProblem.title } : null}
-          nextProblem={nextProblem ? { id: nextProblem.id, title: nextProblem.title } : null}
-          fromStarred={from === 'starred'}
-          starredPrev={starredPrev}
-          starredNext={starredNext}
-        />
+        {isCssEntry(entry) ? (
+          <CssLayoutClient
+            entry={entry as CssLayoutEntry}
+            problem={problem as CssProblem}
+            topicSlug={slug}
+            isLoggedIn={!!userId}
+            initialCompleted={isCompleted}
+            initialStarred={isStarred}
+            prevProblem={prevProblem ? { id: prevProblem.id, title: prevProblem.title } : null}
+            nextProblem={nextProblem ? { id: nextProblem.id, title: nextProblem.title } : null}
+            starredPrev={starredPrev}
+            starredNext={starredNext}
+          />
+        ) : (
+          <PracticeClient
+            entry={entry as MethodEntry}
+            problem={problem as Problem}
+            topicSlug={slug}
+            isLoggedIn={!!userId}
+            initialCompleted={isCompleted}
+            initialStarred={isStarred}
+            prevProblem={prevProblem ? { id: prevProblem.id, title: prevProblem.title } : null}
+            nextProblem={nextProblem ? { id: nextProblem.id, title: nextProblem.title } : null}
+            fromStarred={from === 'starred'}
+            starredPrev={starredPrev}
+            starredNext={starredNext}
+          />
+        )}
       </div>
     </main>
   )

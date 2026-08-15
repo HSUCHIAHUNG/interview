@@ -41,7 +41,7 @@ export default async function PracticeListPage({ params }: Props) {
         <div className="flex items-center gap-2 mb-6 text-sm">
           <Link href={backHref} className="text-gray-500 hover:text-gray-300 transition">{backLabel}</Link>
           <span className="text-gray-700">/</span>
-          <span className="text-gray-500">{entry.subCategory}</span>
+          <span className="text-gray-500">{'subCategory' in entry ? entry.subCategory : ''}</span>
           <span className="text-gray-700">/</span>
           <span className="text-gray-300 font-mono">{entry.methodName}</span>
         </div>

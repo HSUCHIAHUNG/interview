@@ -5004,6 +5004,10 @@ import { hasNumberChallenge, getNumberChallenge, numberChallenges } from './numb
 import { hasDateChallenge, getDateChallenge, dateChallenges } from './date-challenges'
 import { hasObjectChallenge, getObjectChallenge, objectChallenges } from './object-challenges'
 import { hasMapsetChallenge, getMapsetChallenge, mapsetChallenges } from './mapset-challenges'
+import { hasCssChallenge, getCssChallenge, cssLayoutChallenges, type CssLayoutEntry } from './css-layout-challenges'
+
+export type { CssLayoutEntry }
+export type AnyPracticeEntry = MethodEntry | CssLayoutEntry
 
 export function hasPracticeChallenge(slug: string): boolean {
   return arrayMethodChallenges.some(e => e.slug === slug)
@@ -5014,9 +5018,10 @@ export function hasPracticeChallenge(slug: string): boolean {
     || hasDateChallenge(slug)
     || hasObjectChallenge(slug)
     || hasMapsetChallenge(slug)
+    || hasCssChallenge(slug)
 }
 
-export function getPracticeChallenge(slug: string): MethodEntry | undefined {
+export function getPracticeChallenge(slug: string): AnyPracticeEntry | undefined {
   return arrayMethodChallenges.find(e => e.slug === slug)
     ?? getTsChallenge(slug)
     ?? getDataOpsChallenge(slug)
@@ -5025,6 +5030,7 @@ export function getPracticeChallenge(slug: string): MethodEntry | undefined {
     ?? getDateChallenge(slug)
     ?? getObjectChallenge(slug)
     ?? getMapsetChallenge(slug)
+    ?? getCssChallenge(slug)
 }
 
 export function getAllPracticeSlugs(): string[] {
@@ -5037,5 +5043,6 @@ export function getAllPracticeSlugs(): string[] {
     ...dateChallenges.map(e => e.slug),
     ...objectChallenges.map(e => e.slug),
     ...mapsetChallenges.map(e => e.slug),
+    ...cssLayoutChallenges.map(e => e.slug),
   ]
 }
