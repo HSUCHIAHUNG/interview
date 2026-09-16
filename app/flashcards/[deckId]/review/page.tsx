@@ -3,9 +3,9 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getDeckWithCards } from '@/lib/db/queries'
 import { parseId } from '@/lib/flashcards/id'
-import DeckClient from './DeckClient'
+import ReviewClient from './ReviewClient'
 
-export default async function FlashcardDeckPage({
+export default async function FlashcardReviewPage({
   params,
 }: {
   params: Promise<{ deckId: string }>
@@ -22,19 +22,16 @@ export default async function FlashcardDeckPage({
 
   return (
     <main className="min-h-screen bg-gray-950 px-6 py-8">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <Link href="/flashcards" className="text-sm text-gray-500 hover:text-gray-300 transition">← 題組列表</Link>
+          <Link href={`/flashcards/${deckId}`} className="text-sm text-gray-500 hover:text-gray-300 transition">← {result.deck.name}</Link>
           <span className="text-gray-700">/</span>
-          <h1 className="text-xl font-bold text-gray-100 flex-1">🗂️ {result.deck.name}</h1>
-          <Link
-            href={`/flashcards/${deckId}/review`}
-            className="text-sm px-3 py-1.5 rounded-md bg-emerald-700 text-white hover:bg-emerald-600 transition"
-          >
-            📖 開始複習
-          </Link>
+          <h1 className="text-xl font-bold text-gray-100">📖 複習</h1>
         </div>
-        <DeckClient deckId={deckId} initialCards={result.cards} />
+        <ReviewClient
+          deckId={deckId}
+          cards={result.cards.map(c => ({ id: c.id, front: c.front, back: c.back }))}
+        />
       </div>
     </main>
   )

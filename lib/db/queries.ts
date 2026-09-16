@@ -896,3 +896,11 @@ export async function deleteDeck(deckId: number, userId: string): Promise<boolea
     .returning({ id: flashcardDecks.id })
   return result.length > 0
 }
+
+export async function markCardReviewed(id: number, deckId: number, userId: string): Promise<boolean> {
+  const owner = await getCardDeckOwner(id)
+  if (!owner || owner.userId !== userId || owner.deckId !== deckId) return false
+
+  await db.update(flashcardCards).set({ reviewedAt: new Date() }).where(eq(flashcardCards.id, id))
+  return true
+}

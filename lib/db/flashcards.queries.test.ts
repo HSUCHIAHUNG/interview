@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { db } from './index'
 import { flashcardDecks, flashcardCards } from './schema'
-import { createDeckWithCards, getDeckWithCards, getMaxCardOrder, addCard, updateCard, deleteCard, getDecksForUser, deleteDeck } from './queries'
+import { createDeckWithCards, getDeckWithCards, getMaxCardOrder, addCard, updateCard, deleteCard, getDecksForUser, deleteDeck, markCardReviewed } from './queries'
 
 const TEST_USER = '__test_user_flashcards__'
 const OTHER_USER = '__test_user_flashcards_other__'
@@ -222,5 +222,53 @@ describe('deleteDeck', () => {
     const fetched = await getDeckWithCards(deck.id, TEST_USER)
     expect(fetched).not.toBeNull()
     expect(fetched!.cards).toHaveLength(1)
+  })
+})
+
+describe('markCardReviewed', () => {
+  it('sets a timestamp on only the targeted card', async () => {
+    const deck = await createDeckWithCards(TEST_USER, 'Deck', [
+      { front: 'a', back: '1' },
+      { front: 'b', back: '2' },
+    ])
+    createdDeckIds.push(deck.id)
+    const before = await getDeckWithCards(deck.id, TEST_USER)
+    const [first, second] = before!.cards
+    expect(first.reviewedAt).toBeNull()
+
+    const ok = await markCardReviewed(first.id, deck.id, TEST_USER)
+    expect(ok).toBe(true)
+
+    const after = await getDeckWithCards(deck.id, TEST_USER)
+    const updated = after!.cards.find(c => c.id === first.id)!
+    const untouched = after!.cards.find(c => c.id === second.id)!
+    expect(updated.reviewedAt).not.toBeNull()
+    expect(untouched.reviewedAt).toBeNull()
+  })
+
+  it('refuses to mark a card reviewed in a deck owned by a different user', async () => {
+    const deck = await createDeckWithCards(TEST_USER, 'Deck', [{ front: 'a', back: '1' }])
+    createdDeckIds.push(deck.id)
+    const before = await getDeckWithCards(deck.id, TEST_USER)
+    const [first] = before!.cards
+
+    const ok = await markCardReviewed(first.id, deck.id, OTHER_USER)
+    expect(ok).toBe(false)
+
+    const after = await getDeckWithCards(deck.id, TEST_USER)
+    expect(after!.cards[0].reviewedAt).toBeNull()
+  })
+
+  it('refuses to mark a card reviewed when the given deckId does not match the card\'s actual deck', async () => {
+    const deckA = await createDeckWithCards(TEST_USER, 'Deck A', [{ front: 'a', back: '1' }])
+    const deckB = await createDeckWithCards(TEST_USER, 'Deck B', [{ front: 'x', back: 'y' }])
+    createdDeckIds.push(deckA.id, deckB.id)
+    const cardInA = (await getDeckWithCards(deckA.id, TEST_USER))!.cards[0]
+
+    const ok = await markCardReviewed(cardInA.id, deckB.id, TEST_USER)
+    expect(ok).toBe(false)
+
+    const after = await getDeckWithCards(deckA.id, TEST_USER)
+    expect(after!.cards[0].reviewedAt).toBeNull()
   })
 })

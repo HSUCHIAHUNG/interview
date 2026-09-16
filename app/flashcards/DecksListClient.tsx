@@ -55,6 +55,13 @@ export default function DecksListClient({ initialDecks }: { initialDecks: DeckSu
                 </p>
               </Link>
 
+              <Link
+                href={`/flashcards/${deck.id}/review`}
+                className="shrink-0 text-xs px-2.5 py-1.5 rounded-md border border-emerald-800 text-emerald-400 hover:border-emerald-600 hover:text-emerald-300 transition"
+              >
+                複習
+              </Link>
+
               {confirmId === deck.id ? (
                 <div className="flex items-center gap-1 shrink-0">
                   <span className="text-xs text-red-400">確定？</span>
