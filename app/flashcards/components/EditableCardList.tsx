@@ -102,7 +102,8 @@ export default function EditableCardList({ cards, onUpdateCard, onDeleteCard, on
             value={card.front}
             onChange={e => onUpdateCard(card.id, 'front', e.target.value)}
             rows={6}
-            className="w-full rounded-md bg-gray-950 border border-gray-800 px-3 py-3 text-base leading-relaxed text-gray-100 focus:outline-none focus:border-gray-600"
+            wrap="off"
+            className="w-full rounded-md bg-gray-950 border border-gray-800 px-3 py-3 text-base leading-relaxed text-gray-100 font-mono whitespace-pre overflow-x-auto focus:outline-none focus:border-gray-600"
           />
         </div>
 
@@ -113,7 +114,8 @@ export default function EditableCardList({ cards, onUpdateCard, onDeleteCard, on
               value={card.back}
               onChange={e => onUpdateCard(card.id, 'back', e.target.value)}
               rows={6}
-              className="w-full rounded-md bg-gray-950 border border-gray-800 px-3 py-3 text-base leading-relaxed text-gray-100 focus:outline-none focus:border-gray-600"
+              wrap="off"
+              className="w-full rounded-md bg-gray-950 border border-gray-800 px-3 py-3 text-base leading-relaxed text-gray-100 font-mono whitespace-pre overflow-x-auto focus:outline-none focus:border-gray-600"
             />
           </div>
         ) : (
