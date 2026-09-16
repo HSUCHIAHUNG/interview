@@ -71,6 +71,13 @@
       "when": 1789530908734,
       "tag": "0009_spicy_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789538698355,
+      "tag": "0010_glossy_hardball",
+      "breakpoints": true
     }
   ]
 }

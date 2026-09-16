@@ -862,3 +862,37 @@ export async function deleteCard(id: number, deckId: number, userId: string): Pr
   await db.delete(flashcardCards).where(eq(flashcardCards.id, id))
   return true
 }
+
+export type FlashcardDeckSummary = {
+  id: number
+  name: string
+  createdAt: Date
+  cardCount: number
+  reviewedCount: number
+}
+
+export async function getDecksForUser(userId: string): Promise<FlashcardDeckSummary[]> {
+  const rows = await db
+    .select({
+      id: flashcardDecks.id,
+      name: flashcardDecks.name,
+      createdAt: flashcardDecks.createdAt,
+      cardCount: sql<number>`count(${flashcardCards.id})::int`,
+      reviewedCount: sql<number>`count(${flashcardCards.id}) filter (where ${flashcardCards.reviewedAt} is not null)::int`,
+    })
+    .from(flashcardDecks)
+    .leftJoin(flashcardCards, eq(flashcardCards.deckId, flashcardDecks.id))
+    .where(eq(flashcardDecks.userId, userId))
+    .groupBy(flashcardDecks.id, flashcardDecks.name, flashcardDecks.createdAt)
+    .orderBy(desc(flashcardDecks.createdAt))
+
+  return rows
+}
+
+export async function deleteDeck(deckId: number, userId: string): Promise<boolean> {
+  const result = await db
+    .delete(flashcardDecks)
+    .where(and(eq(flashcardDecks.id, deckId), eq(flashcardDecks.userId, userId)))
+    .returning({ id: flashcardDecks.id })
+  return result.length > 0
+}

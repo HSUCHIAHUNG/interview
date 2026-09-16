@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { db } from './index'
 import { flashcardDecks, flashcardCards } from './schema'
-import { createDeckWithCards, getDeckWithCards, getMaxCardOrder, addCard, updateCard, deleteCard } from './queries'
+import { createDeckWithCards, getDeckWithCards, getMaxCardOrder, addCard, updateCard, deleteCard, getDecksForUser, deleteDeck } from './queries'
 
 const TEST_USER = '__test_user_flashcards__'
 const OTHER_USER = '__test_user_flashcards_other__'
@@ -164,5 +164,63 @@ describe('deleteCard', () => {
 
     const after = await getDeckWithCards(deckA.id, TEST_USER)
     expect(after!.cards).toHaveLength(1)
+  })
+})
+
+describe('getDecksForUser', () => {
+  it('returns only the calling user\'s decks with correct card and reviewed counts', async () => {
+    const deckA = await createDeckWithCards(TEST_USER, 'Deck A', [
+      { front: 'a', back: '1' },
+      { front: 'b', back: '2' },
+    ])
+    const deckB = await createDeckWithCards(OTHER_USER, 'Deck B', [{ front: 'x', back: 'y' }])
+    createdDeckIds.push(deckA.id, deckB.id)
+
+    const withCards = await getDeckWithCards(deckA.id, TEST_USER)
+    await db.update(flashcardCards).set({ reviewedAt: new Date() }).where(eq(flashcardCards.id, withCards!.cards[0].id))
+
+    const decks = await getDecksForUser(TEST_USER)
+    const found = decks.find(d => d.id === deckA.id)
+    expect(found).toBeDefined()
+    expect(found!.name).toBe('Deck A')
+    expect(found!.cardCount).toBe(2)
+    expect(found!.reviewedCount).toBe(1)
+    expect(decks.some(d => d.id === deckB.id)).toBe(false)
+  })
+
+  it('does not include another user\'s deck', async () => {
+    const deck = await createDeckWithCards(OTHER_USER, 'Other', [{ front: 'x', back: 'y' }])
+    createdDeckIds.push(deck.id)
+
+    const decks = await getDecksForUser(TEST_USER)
+    expect(decks.some(d => d.id === deck.id)).toBe(false)
+  })
+})
+
+describe('deleteDeck', () => {
+  it('deletes a deck and cascades to its cards, for the owning user', async () => {
+    const deck = await createDeckWithCards(TEST_USER, 'To delete', [{ front: 'a', back: '1' }])
+    createdDeckIds.push(deck.id)
+
+    const ok = await deleteDeck(deck.id, TEST_USER)
+    expect(ok).toBe(true)
+
+    const fetched = await getDeckWithCards(deck.id, TEST_USER)
+    expect(fetched).toBeNull()
+
+    const remainingCards = await db.select().from(flashcardCards).where(eq(flashcardCards.deckId, deck.id))
+    expect(remainingCards).toHaveLength(0)
+  })
+
+  it('refuses to delete a deck owned by a different user, leaving it and its cards intact', async () => {
+    const deck = await createDeckWithCards(TEST_USER, 'Protected', [{ front: 'a', back: '1' }])
+    createdDeckIds.push(deck.id)
+
+    const ok = await deleteDeck(deck.id, OTHER_USER)
+    expect(ok).toBe(false)
+
+    const fetched = await getDeckWithCards(deck.id, TEST_USER)
+    expect(fetched).not.toBeNull()
+    expect(fetched!.cards).toHaveLength(1)
   })
 })

@@ -38,7 +38,8 @@ export default function DeckClient({ deckId, initialCards }: { deckId: number; i
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ front, back }),
         })
-        if (!res.ok) throw new Error('update failed')
+        // 404 means the card is already gone (e.g. deleted from another tab) — nothing to report
+        if (!res.ok && res.status !== 404) throw new Error('update failed')
       } catch {
         setError('更新卡片失敗，請重新整理頁面再試一次。')
       }
@@ -70,7 +71,8 @@ export default function DeckClient({ deckId, initialCards }: { deckId: number; i
     setCards(prev => prev.filter(c => c.id !== id))
     try {
       const res = await fetch(`/api/flashcards/decks/${deckId}/cards/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('delete failed')
+      // 404 means it was already gone (e.g. deleted from another tab) — the optimistic removal above was correct
+      if (!res.ok && res.status !== 404) throw new Error('delete failed')
     } catch {
       setCards(prevCards)
       setError('刪除卡片失敗，請再試一次。')

@@ -1,4 +1,4 @@
-import { integer, jsonb, pgTable, serial, text, timestamp, boolean, unique } from 'drizzle-orm/pg-core'
+import { index, integer, jsonb, pgTable, serial, text, timestamp, boolean, unique } from 'drizzle-orm/pg-core'
 
 export const topics = pgTable('topics', {
   id: serial('id').primaryKey(),
@@ -182,7 +182,9 @@ export const flashcardDecks = pgTable('flashcard_decks', {
   userId: text('user_id').notNull(),
   name: text('name').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-})
+}, (t) => [
+  index('flashcard_decks_user_id_idx').on(t.userId),
+])
 
 export const flashcardCards = pgTable('flashcard_cards', {
   id: serial('id').primaryKey(),
@@ -193,7 +195,9 @@ export const flashcardCards = pgTable('flashcard_cards', {
   reviewedAt: timestamp('reviewed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+}, (t) => [
+  index('flashcard_cards_deck_id_idx').on(t.deckId),
+])
 
 export type TodoItem = { id: string; text: string; done: boolean }
 export type TodoSection = { id: string; title: string; items: TodoItem[] }

@@ -1,0 +1,2 @@
+CREATE INDEX "flashcard_cards_deck_id_idx" ON "flashcard_cards" USING btree ("deck_id");--> statement-breakpoint
+CREATE INDEX "flashcard_decks_user_id_idx" ON "flashcard_decks" USING btree ("user_id");

@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { updateCard, deleteCard } from '@/lib/db/queries'
-
-function parseId(s: string): number | null {
-  return /^\d+$/.test(s) ? parseInt(s, 10) : null
-}
+import { parseId } from '@/lib/flashcards/id'
 
 export async function PATCH(
   req: Request,

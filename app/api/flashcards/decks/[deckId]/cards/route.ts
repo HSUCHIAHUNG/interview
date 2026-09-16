@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { addCard, getMaxCardOrder } from '@/lib/db/queries'
+import { parseId } from '@/lib/flashcards/id'
 
 export async function POST(
   req: Request,
@@ -10,8 +11,8 @@ export async function POST(
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { deckId: deckIdStr } = await params
-  if (!/^\d+$/.test(deckIdStr)) return NextResponse.json({ error: 'Invalid deck id' }, { status: 400 })
-  const deckId = parseInt(deckIdStr, 10)
+  const deckId = parseId(deckIdStr)
+  if (deckId === null) return NextResponse.json({ error: 'Invalid deck id' }, { status: 400 })
 
   const { front, back } = await req.json() as { front?: string; back?: string }
 
