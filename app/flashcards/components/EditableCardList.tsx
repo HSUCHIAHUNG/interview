@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 export type EditableCard = {
   id: string
@@ -14,6 +15,52 @@ interface Props {
   onUpdateCard: (id: string, field: 'front' | 'back', value: string) => void
   onDeleteCard: (id: string) => void
   onAddCard: () => void
+}
+
+const markdownComponents = {
+  p: ({ children }: { children?: ReactNode }) => <p className="leading-relaxed whitespace-pre-wrap">{children}</p>,
+  code: ({ children }: { children?: ReactNode }) => (
+    <code className="text-blue-300 font-mono text-sm bg-blue-950/30 px-1 rounded">{children}</code>
+  ),
+  pre: ({ children }: { children?: ReactNode }) => (
+    <pre className="bg-gray-950 text-green-300 text-sm rounded-md px-3 py-2 overflow-x-auto my-1 font-mono whitespace-pre">
+      {children}
+    </pre>
+  ),
+}
+
+function CardField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const [preview, setPreview] = useState(false)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <label className="text-xs text-gray-500">{label}</label>
+        <button
+          onClick={() => setPreview(p => !p)}
+          className="text-xs text-gray-500 hover:text-gray-300 transition"
+        >
+          {preview ? '← 編輯' : '預覽（含程式碼區塊）'}
+        </button>
+      </div>
+      {preview ? (
+        <div className="w-full min-h-38 rounded-md bg-gray-950 border border-gray-800 px-3 py-3 text-base text-gray-100">
+          {value.trim() === '' ? (
+            <span className="text-gray-600">（空白）</span>
+          ) : (
+            <ReactMarkdown components={markdownComponents}>{value}</ReactMarkdown>
+          )}
+        </div>
+      ) : (
+        <textarea
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          rows={6}
+          className="w-full rounded-md bg-gray-950 border border-gray-800 px-3 py-3 text-base leading-relaxed text-gray-100 focus:outline-none focus:border-gray-600"
+        />
+      )}
+    </div>
+  )
 }
 
 export default function EditableCardList({ cards, onUpdateCard, onDeleteCard, onAddCard }: Props) {
@@ -96,28 +143,20 @@ export default function EditableCardList({ cards, onUpdateCard, onDeleteCard, on
           </button>
         </div>
 
-        <div className="mb-4">
-          <label className="text-xs text-gray-500 block mb-1">正面</label>
-          <textarea
+        <div className="mb-1 text-[11px] text-gray-600">
+          程式碼請用三個反引號 <code className="text-gray-400">```</code> 包起來，切到「預覽」時程式區塊會自動出現橫向捲軸，其餘文字正常換行。
+        </div>
+
+        <div className="mb-4 mt-2">
+          <CardField
+            label="正面"
             value={card.front}
-            onChange={e => onUpdateCard(card.id, 'front', e.target.value)}
-            rows={6}
-            wrap="off"
-            className="w-full rounded-md bg-gray-950 border border-gray-800 px-3 py-3 text-base leading-relaxed text-gray-100 font-mono whitespace-pre overflow-x-auto focus:outline-none focus:border-gray-600"
+            onChange={v => onUpdateCard(card.id, 'front', v)}
           />
         </div>
 
         {revealed ? (
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">反面</label>
-            <textarea
-              value={card.back}
-              onChange={e => onUpdateCard(card.id, 'back', e.target.value)}
-              rows={6}
-              wrap="off"
-              className="w-full rounded-md bg-gray-950 border border-gray-800 px-3 py-3 text-base leading-relaxed text-gray-100 font-mono whitespace-pre overflow-x-auto focus:outline-none focus:border-gray-600"
-            />
-          </div>
+          <CardField label="反面" value={card.back} onChange={v => onUpdateCard(card.id, 'back', v)} />
         ) : (
           <button
             onClick={() => setRevealed(true)}
