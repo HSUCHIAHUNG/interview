@@ -71,6 +71,9 @@ export default function HeaderMenu({ isLoggedIn }: { isLoggedIn: boolean }) {
               <Link href="/starred" className={btnClass}>
                 ⭐ 必考題
               </Link>
+              <Link href="/flashcards" className={btnClass}>
+                🗂️ Flashcards
+              </Link>
             </div>
 
             {/* Mobile: hamburger */}
@@ -129,6 +132,13 @@ export default function HeaderMenu({ isLoggedIn }: { isLoggedIn: boolean }) {
                     className={`${menuItemClass} border-t border-gray-800`}
                   >
                     ⭐ 必考題
+                  </Link>
+                  <Link
+                    href="/flashcards"
+                    onClick={() => setMenuOpen(false)}
+                    className={`${menuItemClass} border-t border-gray-800`}
+                  >
+                    🗂️ Flashcards
                   </Link>
                 </div>
               )}
