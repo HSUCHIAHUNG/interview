@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { getDeckWithCards } from '@/lib/db/queries'
 import { parseId } from '@/lib/flashcards/id'
 import DeckClient from './DeckClient'
+import ReviewSummary from './ReviewSummary'
 
 export default async function FlashcardDeckPage({
   params,
@@ -34,6 +35,11 @@ export default async function FlashcardDeckPage({
             📖 開始複習
           </Link>
         </div>
+        <ReviewSummary
+          deckId={deckId}
+          cardCount={result.cards.length}
+          initialReviewedCount={result.cards.filter(c => c.reviewedAt !== null).length}
+        />
         <DeckClient deckId={deckId} initialCards={result.cards} />
       </div>
     </main>

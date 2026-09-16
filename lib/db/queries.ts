@@ -826,6 +826,15 @@ async function getCardDeckOwner(cardId: number): Promise<{ userId: string; deckI
   return row ?? null
 }
 
+async function isDeckOwnedByUser(deckId: number, userId: string): Promise<boolean> {
+  const [deck] = await db
+    .select({ id: flashcardDecks.id })
+    .from(flashcardDecks)
+    .where(and(eq(flashcardDecks.id, deckId), eq(flashcardDecks.userId, userId)))
+    .limit(1)
+  return !!deck
+}
+
 export async function addCard(
   deckId: number,
   userId: string,
@@ -833,12 +842,7 @@ export async function addCard(
   back: string,
   order: number
 ): Promise<{ id: number } | null> {
-  const [deck] = await db
-    .select()
-    .from(flashcardDecks)
-    .where(and(eq(flashcardDecks.id, deckId), eq(flashcardDecks.userId, userId)))
-    .limit(1)
-  if (!deck) return null
+  if (!(await isDeckOwnedByUser(deckId, userId))) return null
 
   const [row] = await db
     .insert(flashcardCards)
@@ -902,5 +906,12 @@ export async function markCardReviewed(id: number, deckId: number, userId: strin
   if (!owner || owner.userId !== userId || owner.deckId !== deckId) return false
 
   await db.update(flashcardCards).set({ reviewedAt: new Date() }).where(eq(flashcardCards.id, id))
+  return true
+}
+
+export async function resetDeckReviewed(deckId: number, userId: string): Promise<boolean> {
+  if (!(await isDeckOwnedByUser(deckId, userId))) return false
+
+  await db.update(flashcardCards).set({ reviewedAt: null }).where(eq(flashcardCards.deckId, deckId))
   return true
 }

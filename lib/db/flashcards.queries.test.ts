@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { db } from './index'
 import { flashcardDecks, flashcardCards } from './schema'
-import { createDeckWithCards, getDeckWithCards, getMaxCardOrder, addCard, updateCard, deleteCard, getDecksForUser, deleteDeck, markCardReviewed } from './queries'
+import { createDeckWithCards, getDeckWithCards, getMaxCardOrder, addCard, updateCard, deleteCard, getDecksForUser, deleteDeck, markCardReviewed, resetDeckReviewed } from './queries'
 
 const TEST_USER = '__test_user_flashcards__'
 const OTHER_USER = '__test_user_flashcards_other__'
@@ -270,5 +270,44 @@ describe('markCardReviewed', () => {
 
     const after = await getDeckWithCards(deckA.id, TEST_USER)
     expect(after!.cards[0].reviewedAt).toBeNull()
+  })
+})
+
+describe('resetDeckReviewed', () => {
+  it('clears reviewedAt for every card in the targeted deck, leaving other decks untouched', async () => {
+    const deckA = await createDeckWithCards(TEST_USER, 'Deck A', [
+      { front: 'a', back: '1' },
+      { front: 'b', back: '2' },
+    ])
+    const deckB = await createDeckWithCards(TEST_USER, 'Deck B', [{ front: 'x', back: 'y' }])
+    createdDeckIds.push(deckA.id, deckB.id)
+
+    const cardsA = (await getDeckWithCards(deckA.id, TEST_USER))!.cards
+    const cardsB = (await getDeckWithCards(deckB.id, TEST_USER))!.cards
+    await markCardReviewed(cardsA[0].id, deckA.id, TEST_USER)
+    await markCardReviewed(cardsA[1].id, deckA.id, TEST_USER)
+    await markCardReviewed(cardsB[0].id, deckB.id, TEST_USER)
+
+    const ok = await resetDeckReviewed(deckA.id, TEST_USER)
+    expect(ok).toBe(true)
+
+    const afterA = await getDeckWithCards(deckA.id, TEST_USER)
+    expect(afterA!.cards.every(c => c.reviewedAt === null)).toBe(true)
+
+    const afterB = await getDeckWithCards(deckB.id, TEST_USER)
+    expect(afterB!.cards[0].reviewedAt).not.toBeNull()
+  })
+
+  it('refuses to reset a deck owned by a different user', async () => {
+    const deck = await createDeckWithCards(TEST_USER, 'Deck', [{ front: 'a', back: '1' }])
+    createdDeckIds.push(deck.id)
+    const [card] = (await getDeckWithCards(deck.id, TEST_USER))!.cards
+    await markCardReviewed(card.id, deck.id, TEST_USER)
+
+    const ok = await resetDeckReviewed(deck.id, OTHER_USER)
+    expect(ok).toBe(false)
+
+    const after = await getDeckWithCards(deck.id, TEST_USER)
+    expect(after!.cards[0].reviewedAt).not.toBeNull()
   })
 })
