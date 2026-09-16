@@ -1,7 +1,12 @@
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import NewDeckClient from './NewDeckClient'
 
-export default function NewFlashcardDeckPage() {
+export default async function NewFlashcardDeckPage() {
+  const { userId } = await auth()
+  if (!userId) redirect('/sign-in')
+
   return (
     <main className="min-h-screen bg-gray-950 px-6 py-8">
       <div className="max-w-3xl mx-auto">

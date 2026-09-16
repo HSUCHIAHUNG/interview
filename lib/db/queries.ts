@@ -1,6 +1,6 @@
 import { eq, sql, and, inArray, gte, gt, asc, desc } from 'drizzle-orm'
 import { db } from './index'
-import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections, userWeeklyGoals, userQuestionLog, userStarredQuestions, userStarredProblems, userWeekNotes } from './schema'
+import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections, userWeeklyGoals, userQuestionLog, userStarredQuestions, userStarredProblems, userWeekNotes, flashcardDecks, flashcardCards } from './schema'
 import type { TopicMeta, Question } from '@/lib/topics'
 
 export type TopicCard = {
@@ -761,4 +761,104 @@ export async function toggleStarredProblem(userId: string, topicSlug: string, pr
     await db.insert(userStarredProblems).values({ userId, topicSlug, problemId })
     return true
   }
+}
+
+// ─── Flashcards ───────────────────────────────────────────────────────────
+
+export type FlashcardDeck = typeof flashcardDecks.$inferSelect
+export type FlashcardCard = typeof flashcardCards.$inferSelect
+
+export async function createDeckWithCards(
+  userId: string,
+  name: string,
+  cards: { front: string; back: string }[]
+): Promise<FlashcardDeck> {
+  const [deck] = await db.insert(flashcardDecks).values({ userId, name }).returning()
+  try {
+    if (cards.length > 0) {
+      await db.insert(flashcardCards).values(
+        cards.map((c, i) => ({ deckId: deck.id, front: c.front, back: c.back, order: i }))
+      )
+    }
+  } catch (err) {
+    await db.delete(flashcardDecks).where(eq(flashcardDecks.id, deck.id))
+    throw err
+  }
+  return deck
+}
+
+export async function getDeckWithCards(
+  deckId: number,
+  userId: string
+): Promise<{ deck: FlashcardDeck; cards: FlashcardCard[] } | null> {
+  const [deck] = await db
+    .select()
+    .from(flashcardDecks)
+    .where(and(eq(flashcardDecks.id, deckId), eq(flashcardDecks.userId, userId)))
+    .limit(1)
+
+  if (!deck) return null
+
+  const cards = await db
+    .select()
+    .from(flashcardCards)
+    .where(eq(flashcardCards.deckId, deckId))
+    .orderBy(asc(flashcardCards.order))
+
+  return { deck, cards }
+}
+
+export async function getMaxCardOrder(deckId: number): Promise<number> {
+  const [row] = await db
+    .select({ max: sql<number>`coalesce(max("order"), -1)` })
+    .from(flashcardCards)
+    .where(eq(flashcardCards.deckId, deckId))
+  return row?.max ?? -1
+}
+
+async function getCardDeckOwner(cardId: number): Promise<{ userId: string; deckId: number } | null> {
+  const [row] = await db
+    .select({ userId: flashcardDecks.userId, deckId: flashcardCards.deckId })
+    .from(flashcardCards)
+    .innerJoin(flashcardDecks, eq(flashcardCards.deckId, flashcardDecks.id))
+    .where(eq(flashcardCards.id, cardId))
+    .limit(1)
+  return row ?? null
+}
+
+export async function addCard(
+  deckId: number,
+  userId: string,
+  front: string,
+  back: string,
+  order: number
+): Promise<{ id: number } | null> {
+  const [deck] = await db
+    .select()
+    .from(flashcardDecks)
+    .where(and(eq(flashcardDecks.id, deckId), eq(flashcardDecks.userId, userId)))
+    .limit(1)
+  if (!deck) return null
+
+  const [row] = await db
+    .insert(flashcardCards)
+    .values({ deckId, front, back, order })
+    .returning({ id: flashcardCards.id })
+  return row
+}
+
+export async function updateCard(id: number, deckId: number, userId: string, front: string, back: string): Promise<boolean> {
+  const owner = await getCardDeckOwner(id)
+  if (!owner || owner.userId !== userId || owner.deckId !== deckId) return false
+
+  await db.update(flashcardCards).set({ front, back, updatedAt: new Date() }).where(eq(flashcardCards.id, id))
+  return true
+}
+
+export async function deleteCard(id: number, deckId: number, userId: string): Promise<boolean> {
+  const owner = await getCardDeckOwner(id)
+  if (!owner || owner.userId !== userId || owner.deckId !== deckId) return false
+
+  await db.delete(flashcardCards).where(eq(flashcardCards.id, id))
+  return true
 }

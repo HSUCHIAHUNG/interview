@@ -177,6 +177,24 @@ export const userDailyNotes = pgTable('user_daily_notes', {
   unique('user_daily_notes_uniq').on(t.userId, t.date),
 ])
 
+export const flashcardDecks = pgTable('flashcard_decks', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const flashcardCards = pgTable('flashcard_cards', {
+  id: serial('id').primaryKey(),
+  deckId: integer('deck_id').references(() => flashcardDecks.id, { onDelete: 'cascade' }).notNull(),
+  front: text('front').notNull(),
+  back: text('back').notNull(),
+  order: integer('order').notNull().default(0),
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 export type TodoItem = { id: string; text: string; done: boolean }
 export type TodoSection = { id: string; title: string; items: TodoItem[] }
 

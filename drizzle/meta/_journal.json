@@ -64,6 +64,13 @@
       "when": 1786442525134,
       "tag": "0008_abnormal_bug",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789530908734,
+      "tag": "0009_spicy_anthem",
+      "breakpoints": true
     }
   ]
 }
