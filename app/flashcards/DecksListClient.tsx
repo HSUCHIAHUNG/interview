@@ -7,7 +7,13 @@ import type { FlashcardDeckSummary } from '@/lib/db/queries'
 type DeckSummary = Pick<FlashcardDeckSummary, 'id' | 'name' | 'cardCount' | 'reviewedCount'>
 type ConfirmAction = { id: number; kind: 'delete' | 'reset' } | null
 
-export default function DecksListClient({ initialDecks }: { initialDecks: DeckSummary[] }) {
+export default function DecksListClient({
+  initialDecks,
+  newDeckHref,
+}: {
+  initialDecks: DeckSummary[]
+  newDeckHref: string
+}) {
   const [decks, setDecks] = useState(initialDecks)
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
@@ -53,7 +59,7 @@ export default function DecksListClient({ initialDecks }: { initialDecks: DeckSu
   return (
     <div className="space-y-4">
       <Link
-        href="/flashcards/new"
+        href={newDeckHref}
         className="block w-full text-center rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white hover:bg-blue-500 transition"
       >
         + 建立新題組

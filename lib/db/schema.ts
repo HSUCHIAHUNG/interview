@@ -177,13 +177,24 @@ export const userDailyNotes = pgTable('user_daily_notes', {
   unique('user_daily_notes_uniq').on(t.userId, t.date),
 ])
 
-export const flashcardDecks = pgTable('flashcard_decks', {
+export const flashcardFolders = pgTable('flashcard_folders', {
   id: serial('id').primaryKey(),
   userId: text('user_id').notNull(),
   name: text('name').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (t) => [
+  index('flashcard_folders_user_id_idx').on(t.userId),
+])
+
+export const flashcardDecks = pgTable('flashcard_decks', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  folderId: integer('folder_id').references(() => flashcardFolders.id, { onDelete: 'set null' }),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => [
   index('flashcard_decks_user_id_idx').on(t.userId),
+  index('flashcard_decks_folder_id_idx').on(t.folderId),
 ])
 
 export const flashcardCards = pgTable('flashcard_cards', {

@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { db } from './index'
 import { flashcardDecks, flashcardCards } from './schema'
-import { createDeckWithCards, getDeckWithCards, getMaxCardOrder, addCard, updateCard, deleteCard, getDecksForUser, deleteDeck, markCardReviewed, resetDeckReviewed, updateDeckName } from './queries'
+import { createDeckWithCards, getDeckWithCards, getMaxCardOrder, addCard, updateCard, deleteCard, getDecksInFolder, deleteDeck, markCardReviewed, resetDeckReviewed, updateDeckName } from './queries'
 
 const TEST_USER = '__test_user_flashcards__'
 const OTHER_USER = '__test_user_flashcards_other__'
@@ -167,8 +167,8 @@ describe('deleteCard', () => {
   })
 })
 
-describe('getDecksForUser', () => {
-  it('returns only the calling user\'s decks with correct card and reviewed counts', async () => {
+describe('getDecksInFolder (unassigned)', () => {
+  it('returns only the calling user\'s unassigned decks with correct card and reviewed counts', async () => {
     const deckA = await createDeckWithCards(TEST_USER, 'Deck A', [
       { front: 'a', back: '1' },
       { front: 'b', back: '2' },
@@ -179,7 +179,7 @@ describe('getDecksForUser', () => {
     const withCards = await getDeckWithCards(deckA.id, TEST_USER)
     await db.update(flashcardCards).set({ reviewedAt: new Date() }).where(eq(flashcardCards.id, withCards!.cards[0].id))
 
-    const decks = await getDecksForUser(TEST_USER)
+    const decks = await getDecksInFolder(null, TEST_USER)
     const found = decks.find(d => d.id === deckA.id)
     expect(found).toBeDefined()
     expect(found!.name).toBe('Deck A')
@@ -192,7 +192,7 @@ describe('getDecksForUser', () => {
     const deck = await createDeckWithCards(OTHER_USER, 'Other', [{ front: 'x', back: 'y' }])
     createdDeckIds.push(deck.id)
 
-    const decks = await getDecksForUser(TEST_USER)
+    const decks = await getDecksInFolder(null, TEST_USER)
     expect(decks.some(d => d.id === deck.id)).toBe(false)
   })
 })

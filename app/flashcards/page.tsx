@@ -1,14 +1,17 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { getDecksForUser } from '@/lib/db/queries'
-import DecksListClient from './DecksListClient'
+import { getFoldersForUser, getUnassignedSummary } from '@/lib/db/queries'
+import FoldersListClient from './FoldersListClient'
 
 export default async function FlashcardsPage() {
   const { userId } = await auth()
   if (!userId) redirect('/sign-in')
 
-  const decks = await getDecksForUser(userId)
+  const [folders, unassigned] = await Promise.all([
+    getFoldersForUser(userId),
+    getUnassignedSummary(userId),
+  ])
 
   return (
     <main className="min-h-screen bg-gray-950 px-6 py-8">
@@ -18,7 +21,7 @@ export default async function FlashcardsPage() {
           <span className="text-gray-700">/</span>
           <h1 className="text-xl font-bold text-gray-100">🗂️ Flashcards</h1>
         </div>
-        <DecksListClient initialDecks={decks} />
+        <FoldersListClient initialFolders={folders} unassigned={unassigned} />
       </div>
     </main>
   )

@@ -1,6 +1,6 @@
 import { eq, sql, and, inArray, gte, gt, asc, desc } from 'drizzle-orm'
 import { db } from './index'
-import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections, userWeeklyGoals, userQuestionLog, userStarredQuestions, userStarredProblems, userWeekNotes, flashcardDecks, flashcardCards } from './schema'
+import { topics, questions, userProgress, userTopicCompletions, themeSubCategories, userProblemCompletions, methodKeyPoints, topicNoteSections, userWeeklyGoals, userQuestionLog, userStarredQuestions, userStarredProblems, userWeekNotes, flashcardDecks, flashcardCards, flashcardFolders } from './schema'
 import type { TopicMeta, Question } from '@/lib/topics'
 
 export type TopicCard = {
@@ -771,9 +771,22 @@ export type FlashcardCard = typeof flashcardCards.$inferSelect
 export async function createDeckWithCards(
   userId: string,
   name: string,
-  cards: { front: string; back: string }[]
+  cards: { front: string; back: string }[],
+  folderId: number | null = null
 ): Promise<FlashcardDeck> {
-  const [deck] = await db.insert(flashcardDecks).values({ userId, name }).returning()
+  if (folderId !== null && !(await isFolderOwnedByUser(folderId, userId))) {
+    folderId = null
+  }
+
+  let deck: FlashcardDeck
+  try {
+    ;[deck] = await db.insert(flashcardDecks).values({ userId, name, folderId }).returning()
+  } catch (err) {
+    // the folder could have been deleted between the ownership check above and this insert — fall back to unassigned
+    if (folderId === null || !isForeignKeyViolation(err)) throw err
+    ;[deck] = await db.insert(flashcardDecks).values({ userId, name, folderId: null }).returning()
+  }
+
   try {
     if (cards.length > 0) {
       await db.insert(flashcardCards).values(
@@ -835,6 +848,19 @@ async function isDeckOwnedByUser(deckId: number, userId: string): Promise<boolea
   return !!deck
 }
 
+function isForeignKeyViolation(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: string }).code === '23503'
+}
+
+async function isFolderOwnedByUser(folderId: number, userId: string): Promise<boolean> {
+  const [folder] = await db
+    .select({ id: flashcardFolders.id })
+    .from(flashcardFolders)
+    .where(and(eq(flashcardFolders.id, folderId), eq(flashcardFolders.userId, userId)))
+    .limit(1)
+  return !!folder
+}
+
 export async function addCard(
   deckId: number,
   userId: string,
@@ -875,7 +901,7 @@ export type FlashcardDeckSummary = {
   reviewedCount: number
 }
 
-export async function getDecksForUser(userId: string): Promise<FlashcardDeckSummary[]> {
+export async function getDecksInFolder(folderId: number | null, userId: string): Promise<FlashcardDeckSummary[]> {
   const rows = await db
     .select({
       id: flashcardDecks.id,
@@ -886,7 +912,12 @@ export async function getDecksForUser(userId: string): Promise<FlashcardDeckSumm
     })
     .from(flashcardDecks)
     .leftJoin(flashcardCards, eq(flashcardCards.deckId, flashcardDecks.id))
-    .where(eq(flashcardDecks.userId, userId))
+    .where(
+      and(
+        eq(flashcardDecks.userId, userId),
+        folderId === null ? sql`${flashcardDecks.folderId} is null` : eq(flashcardDecks.folderId, folderId),
+      ),
+    )
     .groupBy(flashcardDecks.id, flashcardDecks.name, flashcardDecks.createdAt)
     .orderBy(desc(flashcardDecks.createdAt))
 
@@ -923,4 +954,96 @@ export async function updateDeckName(deckId: number, userId: string, name: strin
     .where(and(eq(flashcardDecks.id, deckId), eq(flashcardDecks.userId, userId)))
     .returning({ id: flashcardDecks.id })
   return result.length > 0
+}
+
+export type FlashcardFolder = typeof flashcardFolders.$inferSelect
+
+export type FlashcardFolderSummary = {
+  id: number
+  name: string
+  createdAt: Date
+  deckCount: number
+  cardCount: number
+  reviewedCount: number
+}
+
+export async function createFolder(userId: string, name: string): Promise<FlashcardFolder> {
+  const [folder] = await db.insert(flashcardFolders).values({ userId, name }).returning()
+  return folder
+}
+
+export async function getFoldersForUser(userId: string): Promise<FlashcardFolderSummary[]> {
+  const rows = await db
+    .select({
+      id: flashcardFolders.id,
+      name: flashcardFolders.name,
+      createdAt: flashcardFolders.createdAt,
+      deckCount: sql<number>`count(distinct ${flashcardDecks.id})::int`,
+      cardCount: sql<number>`count(${flashcardCards.id})::int`,
+      reviewedCount: sql<number>`count(${flashcardCards.id}) filter (where ${flashcardCards.reviewedAt} is not null)::int`,
+    })
+    .from(flashcardFolders)
+    .leftJoin(flashcardDecks, eq(flashcardDecks.folderId, flashcardFolders.id))
+    .leftJoin(flashcardCards, eq(flashcardCards.deckId, flashcardDecks.id))
+    .where(eq(flashcardFolders.userId, userId))
+    .groupBy(flashcardFolders.id, flashcardFolders.name, flashcardFolders.createdAt)
+    .orderBy(desc(flashcardFolders.createdAt))
+
+  return rows
+}
+
+export async function getFolderNamesForUser(userId: string): Promise<{ id: number; name: string }[]> {
+  return db
+    .select({ id: flashcardFolders.id, name: flashcardFolders.name })
+    .from(flashcardFolders)
+    .where(eq(flashcardFolders.userId, userId))
+    .orderBy(desc(flashcardFolders.createdAt))
+}
+
+export async function getUnassignedSummary(userId: string): Promise<{ deckCount: number; cardCount: number; reviewedCount: number }> {
+  const [row] = await db
+    .select({
+      deckCount: sql<number>`count(distinct ${flashcardDecks.id})::int`,
+      cardCount: sql<number>`count(${flashcardCards.id})::int`,
+      reviewedCount: sql<number>`count(${flashcardCards.id}) filter (where ${flashcardCards.reviewedAt} is not null)::int`,
+    })
+    .from(flashcardDecks)
+    .leftJoin(flashcardCards, eq(flashcardCards.deckId, flashcardDecks.id))
+    .where(and(eq(flashcardDecks.userId, userId), sql`${flashcardDecks.folderId} is null`))
+
+  return row ?? { deckCount: 0, cardCount: 0, reviewedCount: 0 }
+}
+
+export async function deleteFolder(folderId: number, userId: string): Promise<boolean> {
+  const result = await db
+    .delete(flashcardFolders)
+    .where(and(eq(flashcardFolders.id, folderId), eq(flashcardFolders.userId, userId)))
+    .returning({ id: flashcardFolders.id })
+  return result.length > 0
+}
+
+export async function updateDeckFolder(deckId: number, userId: string, folderId: number | null): Promise<boolean> {
+  if (folderId !== null && !(await isFolderOwnedByUser(folderId, userId))) return false
+
+  try {
+    const result = await db
+      .update(flashcardDecks)
+      .set({ folderId })
+      .where(and(eq(flashcardDecks.id, deckId), eq(flashcardDecks.userId, userId)))
+      .returning({ id: flashcardDecks.id })
+    return result.length > 0
+  } catch (err) {
+    // the folder could have been deleted between the ownership check above and this update
+    if (folderId !== null && isForeignKeyViolation(err)) return false
+    throw err
+  }
+}
+
+export async function getFolder(folderId: number, userId: string): Promise<FlashcardFolder | null> {
+  const [folder] = await db
+    .select()
+    .from(flashcardFolders)
+    .where(and(eq(flashcardFolders.id, folderId), eq(flashcardFolders.userId, userId)))
+    .limit(1)
+  return folder ?? null
 }

@@ -6,7 +6,7 @@ import { parseAnkiText, genId, isValidCard, type ParsedCard } from '@/lib/flashc
 import { todayStr } from '@/lib/flashcards/date'
 import EditableCardList from '../components/EditableCardList'
 
-export default function NewDeckClient() {
+export default function NewDeckClient({ folderId }: { folderId: number | null }) {
   const router = useRouter()
   const [rawText, setRawText] = useState('')
   const [cards, setCards] = useState<ParsedCard[]>([])
@@ -77,6 +77,7 @@ export default function NewDeckClient() {
         body: JSON.stringify({
           name: deckName.trim() || todayStr(),
           cards: validCards.map(c => ({ front: c.front, back: c.back })),
+          folderId,
         }),
       })
       if (!res.ok) throw new Error('save failed')

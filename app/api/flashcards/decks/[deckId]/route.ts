@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
-import { getDeckWithCards, deleteDeck, updateDeckName } from '@/lib/db/queries'
+import { getDeckWithCards, deleteDeck, updateDeckName, updateDeckFolder } from '@/lib/db/queries'
 import { parseId } from '@/lib/flashcards/id'
 
 export async function GET(
@@ -32,11 +32,22 @@ export async function PATCH(
   const deckId = parseId(deckIdStr)
   if (deckId === null) return NextResponse.json({ error: 'Invalid deck id' }, { status: 400 })
 
-  const { name } = await req.json() as { name?: string }
-  if (!name?.trim()) return NextResponse.json({ error: 'name is required' }, { status: 400 })
+  const body = await req.json() as { name?: string; folderId?: number | null }
 
-  const ok = await updateDeckName(deckId, userId, name.trim())
-  if (!ok) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if ('folderId' in body) {
+    const before = await getDeckWithCards(deckId, userId)
+    const folderId = typeof body.folderId === 'number' ? body.folderId : null
+    const ok = await updateDeckFolder(deckId, userId, folderId)
+    if (!ok) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const previousFolderId = before?.deck.folderId ?? null
+    revalidatePath(previousFolderId !== null ? `/flashcards/folders/${previousFolderId}` : '/flashcards/unassigned')
+    revalidatePath(folderId !== null ? `/flashcards/folders/${folderId}` : '/flashcards/unassigned')
+  } else {
+    if (!body.name?.trim()) return NextResponse.json({ error: 'name is required' }, { status: 400 })
+    const ok = await updateDeckName(deckId, userId, body.name.trim())
+    if (!ok) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
 
   revalidatePath('/flashcards')
   revalidatePath(`/flashcards/${deckId}`)
