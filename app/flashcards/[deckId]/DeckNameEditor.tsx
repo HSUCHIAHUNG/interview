@@ -16,6 +16,7 @@ export default function DeckNameEditor({ deckId, initialName }: { deckId: number
   }
 
   async function handleSave() {
+    if (saving) return
     const trimmed = draft.trim()
     if (!trimmed) return
     if (trimmed === name) {
@@ -49,10 +50,11 @@ export default function DeckNameEditor({ deckId, initialName }: { deckId: number
             onChange={e => setDraft(e.target.value)}
             onKeyDown={e => {
               if (e.key === 'Enter') handleSave()
-              if (e.key === 'Escape') setEditing(false)
+              if (e.key === 'Escape' && !saving) setEditing(false)
             }}
+            disabled={saving}
             autoFocus
-            className="flex-1 min-w-0 rounded-md bg-gray-900 border border-gray-700 px-2 py-1 text-xl font-bold text-gray-100 focus:outline-none focus:border-gray-500"
+            className="flex-1 min-w-0 rounded-md bg-gray-900 border border-gray-700 px-2 py-1 text-xl font-bold text-gray-100 focus:outline-none focus:border-gray-500 disabled:opacity-50"
           />
           <button
             onClick={handleSave}

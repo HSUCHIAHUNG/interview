@@ -40,6 +40,7 @@ export async function PATCH(
 
   revalidatePath('/flashcards')
   revalidatePath(`/flashcards/${deckId}`)
+  revalidatePath(`/flashcards/${deckId}/review`)
   return NextResponse.json({ ok: true })
 }
 
