@@ -915,3 +915,12 @@ export async function resetDeckReviewed(deckId: number, userId: string): Promise
   await db.update(flashcardCards).set({ reviewedAt: null }).where(eq(flashcardCards.deckId, deckId))
   return true
 }
+
+export async function updateDeckName(deckId: number, userId: string, name: string): Promise<boolean> {
+  const result = await db
+    .update(flashcardDecks)
+    .set({ name })
+    .where(and(eq(flashcardDecks.id, deckId), eq(flashcardDecks.userId, userId)))
+    .returning({ id: flashcardDecks.id })
+  return result.length > 0
+}

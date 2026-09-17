@@ -5,6 +5,7 @@ import { getDeckWithCards } from '@/lib/db/queries'
 import { parseId } from '@/lib/flashcards/id'
 import DeckClient from './DeckClient'
 import ReviewSummary from './ReviewSummary'
+import DeckNameEditor from './DeckNameEditor'
 
 export default async function FlashcardDeckPage({
   params,
@@ -27,7 +28,7 @@ export default async function FlashcardDeckPage({
         <div className="flex items-center gap-3 mb-8">
           <Link href="/flashcards" className="text-sm text-gray-500 hover:text-gray-300 transition">← 題組列表</Link>
           <span className="text-gray-700">/</span>
-          <h1 className="text-xl font-bold text-gray-100 flex-1">🗂️ {result.deck.name}</h1>
+          <DeckNameEditor deckId={deckId} initialName={result.deck.name} />
           <Link
             href={`/flashcards/${deckId}/review`}
             className="text-sm px-3 py-1.5 rounded-md bg-emerald-700 text-white hover:bg-emerald-600 transition"

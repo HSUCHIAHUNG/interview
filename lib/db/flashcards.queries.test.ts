@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { db } from './index'
 import { flashcardDecks, flashcardCards } from './schema'
-import { createDeckWithCards, getDeckWithCards, getMaxCardOrder, addCard, updateCard, deleteCard, getDecksForUser, deleteDeck, markCardReviewed, resetDeckReviewed } from './queries'
+import { createDeckWithCards, getDeckWithCards, getMaxCardOrder, addCard, updateCard, deleteCard, getDecksForUser, deleteDeck, markCardReviewed, resetDeckReviewed, updateDeckName } from './queries'
 
 const TEST_USER = '__test_user_flashcards__'
 const OTHER_USER = '__test_user_flashcards_other__'
@@ -309,5 +309,29 @@ describe('resetDeckReviewed', () => {
 
     const after = await getDeckWithCards(deck.id, TEST_USER)
     expect(after!.cards[0].reviewedAt).not.toBeNull()
+  })
+})
+
+describe('updateDeckName', () => {
+  it('renames the deck for its owner', async () => {
+    const deck = await createDeckWithCards(TEST_USER, 'Old Name', [{ front: 'a', back: '1' }])
+    createdDeckIds.push(deck.id)
+
+    const ok = await updateDeckName(deck.id, TEST_USER, 'New Name')
+    expect(ok).toBe(true)
+
+    const after = await getDeckWithCards(deck.id, TEST_USER)
+    expect(after!.deck.name).toBe('New Name')
+  })
+
+  it('refuses to rename a deck owned by a different user', async () => {
+    const deck = await createDeckWithCards(TEST_USER, 'Old Name', [{ front: 'a', back: '1' }])
+    createdDeckIds.push(deck.id)
+
+    const ok = await updateDeckName(deck.id, OTHER_USER, 'Hacked Name')
+    expect(ok).toBe(false)
+
+    const after = await getDeckWithCards(deck.id, TEST_USER)
+    expect(after!.deck.name).toBe('Old Name')
   })
 })
