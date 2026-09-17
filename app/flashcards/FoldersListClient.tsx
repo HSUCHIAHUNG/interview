@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { FlashcardFolderSummary } from '@/lib/db/queries'
 
 type FolderSummary = Pick<FlashcardFolderSummary, 'id' | 'name' | 'deckCount' | 'cardCount' | 'reviewedCount'>
@@ -14,6 +15,7 @@ export default function FoldersListClient({
   initialFolders: FolderSummary[]
   unassigned: UnassignedSummary
 }) {
+  const router = useRouter()
   const [folders, setFolders] = useState(initialFolders)
   const [unassignedSummary, setUnassignedSummary] = useState(unassigned)
   const [creating, setCreating] = useState(false)
@@ -39,6 +41,7 @@ export default function FoldersListClient({
       setFolders(prev => [{ id, name, deckCount: 0, cardCount: 0, reviewedCount: 0 }, ...prev])
       setNewName('')
       setCreating(false)
+      router.refresh()
     } catch {
       setError('建立資料夾失敗，請再試一次。')
     } finally {
@@ -63,6 +66,7 @@ export default function FoldersListClient({
       }
       setFolders(prev => prev.filter(f => f.id !== id))
       setConfirmDeleteId(null)
+      router.refresh()
     } catch {
       setError('刪除資料夾失敗，請再試一次。')
     } finally {

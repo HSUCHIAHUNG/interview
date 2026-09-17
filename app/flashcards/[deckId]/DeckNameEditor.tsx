@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function DeckNameEditor({ deckId, initialName }: { deckId: number; initialName: string }) {
+  const router = useRouter()
   const [name, setName] = useState(initialName)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(initialName)
@@ -34,6 +36,7 @@ export default function DeckNameEditor({ deckId, initialName }: { deckId: number
       if (!res.ok) throw new Error('rename failed')
       setName(trimmed)
       setEditing(false)
+      router.refresh()
     } catch {
       setError('更新題組名稱失敗，請再試一次。')
     } finally {

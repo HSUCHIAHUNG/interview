@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import EditableCardList, { type EditableCard } from '../components/EditableCardList'
 import { isValidCard } from '@/lib/flashcards/parseAnkiText'
 
@@ -15,6 +16,7 @@ function toEditableCard(c: ServerCard): EditableCard {
 }
 
 export default function DeckClient({ deckId, initialCards }: { deckId: number; initialCards: ServerCard[] }) {
+  const router = useRouter()
   const [cards, setCards] = useState<EditableCard[]>(initialCards.map(toEditableCard))
   const [error, setError] = useState<string | null>(null)
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -73,6 +75,7 @@ export default function DeckClient({ deckId, initialCards }: { deckId: number; i
       const res = await fetch(`/api/flashcards/decks/${deckId}/cards/${id}`, { method: 'DELETE' })
       // 404 means it was already gone (e.g. deleted from another tab) — the optimistic removal above was correct
       if (!res.ok && res.status !== 404) throw new Error('delete failed')
+      router.refresh()
     } catch {
       setCards(prevCards)
       setError('刪除卡片失敗，請再試一次。')
@@ -92,6 +95,7 @@ export default function DeckClient({ deckId, initialCards }: { deckId: number; i
       if (!res.ok) throw new Error('add failed')
       const { id } = await res.json() as { id: number }
       setCards(prev => [...prev, { id: String(id), front: '', back: '', valid: false }])
+      router.refresh()
     } catch {
       setError('新增卡片失敗，請再試一次。')
     } finally {

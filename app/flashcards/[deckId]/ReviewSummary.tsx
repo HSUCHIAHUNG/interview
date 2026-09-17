@@ -31,6 +31,7 @@ export default function ReviewSummary({
       if (!res.ok) throw new Error('reset failed')
       setReviewedCount(0)
       setConfirming(false)
+      router.refresh()
     } catch {
       setError('重置複習進度失敗，請再試一次。')
     } finally {

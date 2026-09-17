@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { revalidatePath } from 'next/cache'
 import { addCard, getMaxCardOrder } from '@/lib/db/queries'
 import { parseId } from '@/lib/flashcards/id'
 
@@ -20,5 +21,9 @@ export async function POST(
   const row = await addCard(deckId, userId, front?.trim() ?? '', back?.trim() ?? '', maxOrder + 1)
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  revalidatePath('/flashcards')
+  revalidatePath('/flashcards/unassigned')
+  revalidatePath(`/flashcards/${deckId}`)
+  revalidatePath(`/flashcards/${deckId}/review`)
   return NextResponse.json({ id: row.id })
 }

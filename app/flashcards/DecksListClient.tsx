@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { FlashcardDeckSummary } from '@/lib/db/queries'
 
 type DeckSummary = Pick<FlashcardDeckSummary, 'id' | 'name' | 'cardCount' | 'reviewedCount'>
@@ -14,6 +15,7 @@ export default function DecksListClient({
   initialDecks: DeckSummary[]
   newDeckHref: string
 }) {
+  const router = useRouter()
   const [decks, setDecks] = useState(initialDecks)
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
@@ -28,6 +30,7 @@ export default function DecksListClient({
       if (!res.ok && res.status !== 404) throw new Error('delete failed')
       setDecks(prev => prev.filter(d => d.id !== id))
       setConfirmAction(null)
+      router.refresh()
     } catch {
       setError('刪除題組失敗，請再試一次。')
     } finally {
@@ -44,11 +47,13 @@ export default function DecksListClient({
         // already gone (e.g. deleted from another tab)
         setDecks(prev => prev.filter(d => d.id !== id))
         setConfirmAction(null)
+        router.refresh()
         return
       }
       if (!res.ok) throw new Error('reset failed')
       setDecks(prev => prev.map(d => (d.id === id ? { ...d, reviewedCount: 0 } : d)))
       setConfirmAction(null)
+      router.refresh()
     } catch {
       setError('重置複習進度失敗，請再試一次。')
     } finally {

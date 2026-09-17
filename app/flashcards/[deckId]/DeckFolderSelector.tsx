@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 type FolderOption = { id: number; name: string }
 
@@ -13,6 +14,7 @@ export default function DeckFolderSelector({
   folders: FolderOption[]
   initialFolderId: number | null
 }) {
+  const router = useRouter()
   const [folderId, setFolderId] = useState<number | null>(initialFolderId)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +32,7 @@ export default function DeckFolderSelector({
         body: JSON.stringify({ folderId: next }),
       })
       if (!res.ok) throw new Error('move failed')
+      router.refresh()
     } catch {
       setFolderId(previous)
       setError('移動題組失敗，請再試一次。')

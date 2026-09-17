@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { revalidatePath } from 'next/cache'
 import { updateCard, deleteCard } from '@/lib/db/queries'
 import { parseId } from '@/lib/flashcards/id'
 
@@ -20,6 +21,8 @@ export async function PATCH(
   const ok = await updateCard(cardId, deckId, userId, front?.trim() ?? '', back?.trim() ?? '')
   if (!ok) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  revalidatePath(`/flashcards/${deckId}`)
+  revalidatePath(`/flashcards/${deckId}/review`)
   return NextResponse.json({ ok: true })
 }
 
@@ -38,5 +41,9 @@ export async function DELETE(
   const ok = await deleteCard(cardId, deckId, userId)
   if (!ok) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  revalidatePath('/flashcards')
+  revalidatePath('/flashcards/unassigned')
+  revalidatePath(`/flashcards/${deckId}`)
+  revalidatePath(`/flashcards/${deckId}/review`)
   return NextResponse.json({ ok: true })
 }
