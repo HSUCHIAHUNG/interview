@@ -4,6 +4,17 @@
 
 Next.js 16 + React 19 + Tailwind CSS 4 的前端面試題練習平台。支援多選題測驗與互動 Demo。
 
+## 開發流程串接（grill-me → to-spec → to-tickets → implement）
+
+- 用 `/grill-me`（[mattpocock/skills](https://github.com/mattpocock/skills) 的 grilling skill）跟使用者訪談、釐清需求並取得共識，是**規劃/對齊理解**的階段，本身不寫程式、不建立 spec 或 tickets。
+- 如果這次訪談的主題是要寫程式（不是純討論、規劃文件、或非程式決策），在訪談結束、frontier 清空、使用者確認理解一致之後，要接著走標準長流程，依序呼叫：
+  1. `/to-spec`：不用再訪談，直接把訪談共識整理成 spec，發布到 issue tracker（見 [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)），標記 `ready-for-agent`。
+  2. `/to-tickets`：把 spec 拆成垂直切片（vertical slice）的 tracer-bullet tickets，各自標明 blocking edges，跟使用者確認粒度後發布。
+  3. `/implement`：依 spec/tickets 實作，在事先約定好的 seam 上用 `/tdd` 的紅燈 → 綠燈 → 重構紀律（先寫測試，看它失敗，再寫最少的程式碼讓它通過，最後才重構），完成後跑 `/code-review`，再 commit。
+- 不要在 grill-me 訪談一結束就直接開始寫實作、事後才補測試；也不要跳過 `/to-spec`／`/to-tickets` 直接進 `/implement`。
+
+> `/to-spec`、`/to-tickets`、`/implement` 跟 `/grilling`、`/tdd`、`/code-review` 一樣，都來自 mattpocock-skills 外掛，只是設了 `disable-model-invocation`（不會被自動建議，需要直接打指令呼叫）。設定已對接 `docs/agents/` 底下的 issue tracker / triage labels / domain docs。
+
 ## 核心概念
 
 每個「主題」由 **題庫** 和 **Demo** 兩部分組成：
@@ -80,3 +91,17 @@ npm run dev    # 啟動開發伺服器
 npm run build  # 建置
 npm run lint   # ESLint 檢查
 ```
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as GitHub issues in this repo (`gh issue` CLI). See [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)。
+
+### Triage labels
+
+Default five canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`)。See [docs/agents/triage-labels.md](docs/agents/triage-labels.md)。
+
+### Domain docs
+
+Single-context layout: `CONTEXT.md` + `docs/adr/` at repo root（目前都還不存在，`/domain-modeling` 用到時會延遲建立）。See [docs/agents/domain.md](docs/agents/domain.md)。
